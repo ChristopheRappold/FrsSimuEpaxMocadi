@@ -17,3 +17,15 @@
 *.log
 *.synctex.gz
 *.fdb_latexmk
+*.dat
+*.html
+*.root
+*.tex
+*tar.gz
+*csv
+*docx
+*xlsx
+*.out
+*.in
+*.hbk
+*.asc
