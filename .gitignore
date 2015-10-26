@@ -1,0 +1,12 @@
+\#*
+*~
+*.d
+*.o
+*.so
+*.pcm
+*.pdf
+*.png
+*par
+*.Dict.*
+*.temp
+*.txt
