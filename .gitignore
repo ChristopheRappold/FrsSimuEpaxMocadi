@@ -29,3 +29,4 @@
 *.in
 *.hbk
 *.asc
+*header_files*
