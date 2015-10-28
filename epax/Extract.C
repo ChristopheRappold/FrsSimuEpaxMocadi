@@ -21,6 +21,7 @@
 #include "TTree.h"
 #include "TFile.h"
 #include "TGraph.h"
+#include "TGraphErrors.h"
 #include "TMultiGraph.h"
 
 
@@ -1111,6 +1112,9 @@ public :
 
 void Plots(int Z, int A, const std::string& name_in, double Eth = 2000.)
 {
+
+  TGraphErrors* GraphEnergy = new TGraphErrors();
+
   std::ifstream ifs ( name_in.c_str() );
   
   std::string temp_line;
@@ -1142,12 +1146,16 @@ void Plots(int Z, int A, const std::string& name_in, double Eth = 2000.)
       std::string SnameF(nameF.Data());
       allFrag.insert(SnameF);
       
-      if(Af != A || Zf != Z)
-	continue;
       
       stream >> Ap >>Zp >> At >> Zt >> Rho >> xs >> DeXs
 	     >> sister1 >> sister2 >> sister3 >> ZtZp
 	     >> Tck >> Survival >> EnergyMean >> EnergySigma;
+
+      GraphEnergy->SetPoint(GraphEnergy->GetN(),GraphEnergy->GetN(),EnergyMean);
+      GraphEnergy->SetPointError(GraphEnergy->GetN()-1,0,EnergySigma);
+      if(Af != A || Zf != Z)
+	continue;
+      
       if(Zt == 1) 
 	continue;
       
@@ -1317,7 +1325,8 @@ void Plots(int Z, int A, const std::string& name_in, double Eth = 2000.)
   //GraphAllRatio[0]->Draw("A*L");
   GraphRatioM->Draw("a*l");
 
-
-  
+  TCanvas* c3 = new TCanvas("c3","c3",500,500);
+  c3->cd();
+  GraphEnergy->Draw("ap");
   
 }
