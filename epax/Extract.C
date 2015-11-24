@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <functional>
 #include <set>
+#include <assert.h>
 
 #include "TMath.h"
 #include "TString.h"
@@ -23,6 +24,7 @@
 #include "TGraph.h"
 #include "TGraphErrors.h"
 #include "TMultiGraph.h"
+#include "TRandom3.h"
 
 
 static const std::string ElName[110] = {
@@ -51,7 +53,7 @@ static const std::string ElName2[111] = {
   "Mt","Ds" };
 
 
-
+using namespace std;
 
 void Extract(std::string name_in,int Atest=9,int Ztest=6,bool updated=false)
 {
@@ -1254,7 +1256,9 @@ void Plots(int Z, int A, const std::string& name_in, double Eth = 2000.)
 	  if(it_BT->second.EnergyMean>Eth  && it_BT->first>0)
 	    {
 	      GraphAll[i]->SetPoint(k,it_BT->second.TargetGramCm*it_BT->first,1e10*it_BT->second.ProdFrag*(1.-it_BT->second.SurvivalRate));
-	      double temp_ratio = TMath::Abs(it_BT->second.ProdPara1)>1e-6 ? (it_BT->second.ProdFrag-it_BT->second.ProdPara1)*(1.-it_BT->second.SurvivalRate) : it_BT->second.ProdFrag*(1.-it_BT->second.SurvivalRate);
+
+	      double temp_ratio = TMath::Abs(it_BT->second.ProdPara1+it_BT->second.ProdPara3)>1e-6 ? 1e10*(it_BT->second.ProdFrag-(it_BT->second.ProdPara1+it_BT->second.ProdPara3))*(1.-it_BT->second.SurvivalRate) : 1e10*it_BT->second.ProdFrag*(1.-it_BT->second.SurvivalRate);
+
 	      GraphAllRatio[i]->SetPoint(k,it_BT->second.TargetGramCm*it_BT->first,temp_ratio);
 	      ++k;
 	    }
@@ -1274,7 +1278,8 @@ void Plots(int Z, int A, const std::string& name_in, double Eth = 2000.)
 
   int NN = 0;
   double MaxBeam = -1;
-
+  double MinBeam = 10000;
+  double MeanMaxBeam = -1;
   for(unsigned int k = 0;k<BeamTarget.size();++k)
     {
       if(0==GraphAll[k])
@@ -1285,11 +1290,19 @@ void Plots(int Z, int A, const std::string& name_in, double Eth = 2000.)
 	  int tempN = GraphAll[k]->GetN();
 	  double tempX,tempY;
 	  GraphAll[k]->GetPoint(tempN-1,tempX,tempY);
+	  double tempY2;
+	  GraphAll[k]->GetPoint(tempN/2,tempX,tempY2);
+	  
 	  if(MaxBeam<tempY)
 	    MaxBeam = tempY;
+	  if(MinBeam>tempY)
+	    MinBeam = tempY;
+	  if(MeanMaxBeam<tempY2)
+	    MeanMaxBeam = tempY;
 	}
     }
-  
+
+  int Nx = 0;
   for(unsigned int k = 0;k<BeamTarget.size();++k)
     {
       if(0==GraphAll[k])
@@ -1300,12 +1313,48 @@ void Plots(int Z, int A, const std::string& name_in, double Eth = 2000.)
 	  int tempN = GraphAll[k]->GetN();
 	  double tempX,tempY;
 	  GraphAll[k]->GetPoint(tempN-1,tempX,tempY);
-	  if(tempY>MaxBeam*0.05)	  
+	  if(tempY>MaxBeam*0.80)
 	    {
 	      GraphAll[k]->SetMarkerStyle(1);
 	      GraphM->Add(GraphAll[k],"C");
 	      ++NN;
 	    }
+	  else if(tempY<MinBeam*1.1)
+	    {
+	      double rand = gRandom->Uniform(0,1);
+	      int Ntest = 10*rand;
+	      if(Nx%10==Ntest)
+		{
+		  GraphAll[k]->SetMarkerStyle(1);
+		  GraphM->Add(GraphAll[k],"C");
+		  ++NN;
+		}
+	    }
+	  else if(tempY>MeanMaxBeam*0.8)
+	    {
+	      double rand = gRandom->Uniform(0,1);
+	      int Ntest = 10*rand;
+	      // if(Nx%10==Ntest)
+		{
+		  GraphAll[k]->SetMarkerStyle(1);
+		  GraphM->Add(GraphAll[k],"C");
+		  ++NN;
+		}
+
+	    }
+	  else
+	    {
+	      ++Nx;
+	      double rand = gRandom->Uniform(0,1);
+	      int Ntest = 10*rand;
+	      if(Nx%10==Ntest)
+		{
+		  GraphAll[k]->SetMarkerStyle(1);
+		  GraphM->Add(GraphAll[k],"C");
+		  ++NN;
+		}
+	    }
+	    
 	}
       if(0==GraphAllRatio[k])
 	cout<<"E> GrapAllRatio ["<<k<<"] NULL !"<<endl;
