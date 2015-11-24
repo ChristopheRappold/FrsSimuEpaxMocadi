@@ -10,6 +10,7 @@ class tuple_graph
 {
 public :
   std::string BT;
+  std::string F;
   std::vector<int> BT_ids;
   std::vector<double> TargetCm;
   std::vector<double> TargetGramCm;
@@ -27,14 +28,14 @@ public :
 
   tuple_graph()
   {}
-  tuple_graph(const std::string& Name, const std::vector<int>& ids, double TCm, double TgCM, double prodF, double prodP1, double prodP2, double prodP3,const std::vector<double>& stage, double EnergyM = 0, double EnergyS = 0, double SurvivalRate = 0):
-    BT(Name),BT_ids(ids),TargetCm(1,TCm),TargetGramCm(1,TgCM),ProdFrag(1,prodF),ProdPara1(1,prodP1),ProdPara2(1,prodP2),ProdPara3(1,prodP3),ProdStage(1,stage),EnergyMean(1,EnergyM),EnergySigma(1,EnergyS),Survival(1,SurvivalRate)
+  tuple_graph(const std::string& Name, const std::string& NameF, const std::vector<int>& ids, double TCm, double TgCM, double prodF, double prodP1, double prodP2, double prodP3,const std::vector<double>& stage, double EnergyM = 0, double EnergyS = 0, double SurvivalRate = 0):
+    BT(Name),F(NameF),BT_ids(ids),TargetCm(1,TCm),TargetGramCm(1,TgCM),ProdFrag(1,prodF),ProdPara1(1,prodP1),ProdPara2(1,prodP2),ProdPara3(1,prodP3),ProdStage(1,stage),EnergyMean(1,EnergyM),EnergySigma(1,EnergyS),Survival(1,SurvivalRate)
   {}
-  tuple_graph(const std::string& Name, const std::vector<int>& ids, double TCm, double TgCM, double prodF, double prodP1, double prodP2, double prodP3, double EnergyM = 0, double EnergyS = 0, double SurvivalRate = 0):
-    BT(Name),BT_ids(ids),TargetCm(1,TCm),TargetGramCm(1,TgCM),ProdFrag(1,prodF),ProdPara1(1,prodP1),ProdPara2(1,prodP2),ProdPara3(1,prodP3),EnergyMean(1,EnergyM),EnergySigma(1,EnergyS),Survival(1,SurvivalRate)
+  tuple_graph(const std::string& Name,const std::string& NameF , const std::vector<int>& ids, double TCm, double TgCM, double prodF, double prodP1, double prodP2, double prodP3, double EnergyM = 0, double EnergyS = 0, double SurvivalRate = 0):
+    BT(Name),F(NameF),BT_ids(ids),TargetCm(1,TCm),TargetGramCm(1,TgCM),ProdFrag(1,prodF),ProdPara1(1,prodP1),ProdPara2(1,prodP2),ProdPara3(1,prodP3),EnergyMean(1,EnergyM),EnergySigma(1,EnergyS),Survival(1,SurvivalRate)
   {}
   ~tuple_graph() {}
-  tuple_graph(const tuple_graph& t):BT(t.BT),BT_ids(t.BT_ids),TargetCm(t.TargetCm),TargetGramCm(t.TargetGramCm),ProdFrag(t.ProdFrag),ProdPara1(t.ProdPara1),ProdPara2(t.ProdPara1),ProdPara3(t.ProdPara3),ProdStage(t.ProdStage),EnergyMean(t.EnergyMean),EnergySigma(t.EnergySigma),Survival(t.Survival)
+  tuple_graph(const tuple_graph& t):BT(t.BT),F(t.F),BT_ids(t.BT_ids),TargetCm(t.TargetCm),TargetGramCm(t.TargetGramCm),ProdFrag(t.ProdFrag),ProdPara1(t.ProdPara1),ProdPara2(t.ProdPara1),ProdPara3(t.ProdPara3),ProdStage(t.ProdStage),EnergyMean(t.EnergyMean),EnergySigma(t.EnergySigma),Survival(t.Survival)
   {}
   void AddValue(double TCm, double TgCM, double prodF, double prodP1, double prodP2, double prodP3,const std::vector<double>& stage, double EnergyM = 0, double EnergyS = 0, double SurvivalRate = 0 )
   {
@@ -64,7 +65,7 @@ public :
 
   void Print() const 
   {
-    std::cout<<" name :"<<BT<<" "<< std::setprecision(8) << BT_ids[0]*100 + BT_ids[1] + 0.01*BT_ids[2] + 0.0001*BT_ids[3] << std::endl;
+    std::cout<<" name BT:"<<BT<<" F:"<<F<<" "<< std::setprecision(8) << BT_ids[0]*100 + BT_ids[1] + 0.01*BT_ids[2] + 0.0001*BT_ids[3] << std::endl;
     std::cout<<" '-> N#"<<TargetCm.size()<<std::endl;
     for(unsigned int i=0;i<TargetCm.size();++i)
       {
@@ -84,7 +85,8 @@ struct dataMax
 
   double beam;
   double target;
-  double cmtarget;
+  double fragment;
+  int cmtarget;
   double intensity;
   double contamination;
   double energyMean;
