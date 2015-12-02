@@ -20,7 +20,7 @@ static int id_event = 0;
 
 //int FuncLoadTree(double *in, double *out, double *dpar, char *option);
 
-int FuncLoadTree(double *in, double *out, double *dpar, char *option)
+extern "C" int FuncLoadTree(double *in, double *out, double *dpar, char *option)
 {
  /* in[0]=X [cm]   in[4]=energy[AMeV] in[8]=electron       in[12]=deltaE[MeV]
      in[1]=X'[mrad] in[5]=time  [us]   in[9]=nf/nsf         in[13]=reserved
@@ -41,10 +41,12 @@ int FuncLoadTree(double *in, double *out, double *dpar, char *option)
       t->SetBranchAddress("MCAnaEvent",&event);
     }
   
-  if(id_event%10000==1)
-    cout<<"current event#"<<id_event<<endl;
+  int start_ev = (int)(dpar[0]);
+  if(id_event%5000==1)
+    cout<<"current event#"<<id_event+start_ev<<endl;
+
   
-  t->GetEntry(id_event);
+  t->GetEntry(id_event+start_ev);
   ++id_event;
   int d_id = -1;
   if(event->Nmc!=0)
@@ -66,13 +68,14 @@ int FuncLoadTree(double *in, double *out, double *dpar, char *option)
       if(hitStop->MC_id==d_id)
 	{
 	  ok = 1;
+	  double mass_u = hitStop->MCparticle.M()/0.931494028; // amu
 	  out[0] = hitStop->MCHit.X(); // cm
 	  out[1] = TMath::ATan(hitStop->MCparticle.X()/hitStop->MCparticle.Z())*1000.; // mrad
 	  out[2] = hitStop->MCHit.Y(); // cm
 	  out[3] = TMath::ATan(hitStop->MCparticle.Y()/hitStop->MCparticle.Z())*1000.; // mrad
-	  out[4] = hitStop->MCparticle.E()*1000/2.; // AMeV
+	  out[4] = (hitStop->MCparticle.E()-hitStop->MCparticle.M())*1000./mass_u; // AMeV
 	  out[5] = 0. ; // micros
-	  out[6] = hitStop->MCparticle.M()/0.931494028; // amu
+	  out[6] = mass_u;
 	  out[7] = 1; // charge
 	  out[8] = 0; // electron
 	  out[9] = in[9]; // nf/nsf
@@ -83,7 +86,7 @@ int FuncLoadTree(double *in, double *out, double *dpar, char *option)
 	  out[14] = in[14];
 	  //point->SetPoint(IdN,hitStop->MCHit.X(),hitStop->MCHit.Y(),hitStop->MCHit.Z());
 	  //++IdN;
-	  std::cout<<" STOPx:"<<hitStop->MCHit.X()<<", STOPy"<<hitStop->MCHit.Y()<<" STOPz:"<<hitStop->MCHit.Z()<<" Charge:"<<hitStop->Charge<<std::endl;
+	  //std::cout<<" STOPx:"<<hitStop->MCHit.X()<<", STOPy"<<hitStop->MCHit.Y()<<" STOPz:"<<hitStop->MCHit.Z()<<" Charge:"<<hitStop->Charge<<std::endl;
 	  //}
 	}
     }

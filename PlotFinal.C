@@ -125,12 +125,14 @@ void PlotFinal(const std::string& in_file)
       TString nameT(""); 
       nameT+=At;
       nameT+= ElName2[Zt];
-      
 
 
       std::string SnameF(nameF.Data());
       std::string SnameP(nameP.Data());
       std::string SnameT(nameT.Data());
+      if(SnameT!="12C" && SnameT!="9Be")
+	continue;
+
       std::string SnameAll(SnameF);
       SnameAll+=SnameP;
       SnameAll+=SnameT;
@@ -177,7 +179,9 @@ void PlotFinal(const std::string& in_file)
 	  GraphAllRatio[i]->SetPoint(k,it_FBT->second.TargetGramCm[k]*1e-3,temp_ratio);
 	}
       GraphAll[i]->SetLineColor(i+1);
+      GraphAll[i]->SetLineWidth(2);
       GraphAllRatio[i]->SetLineColor(i+1);
+      GraphAllRatio[i]->SetLineWidth(2);
 
       ++i;
       

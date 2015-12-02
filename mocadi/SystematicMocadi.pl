@@ -1,6 +1,7 @@
 #! /usr/bin/perl
 
-use lib "/u/crappold/frs/epax/usr/local/share/perl";
+#use lib "/u/crappold/frs/epax/usr/local/share/perl";
+use lib "./usr/lib/perl5";
 use IO::CaptureOutput qw/capture/;
 my ($stdout, $stderr);
 
@@ -62,13 +63,13 @@ close $fileheader;
 
 @array_thickness;
 push(@array_thickness,"1.");
-
-#push(@array_thickness,"2.");
+push(@array_thickness,"2.");
 push(@array_thickness,"5.");
-#push(@array_thickness,"8.");
-
+push(@array_thickness,"8.");
 push(@array_thickness,"10.");
+push(@array_thickness,"13.");
 push(@array_thickness,"15.");
+push(@array_thickness,"20.");
 
 print @array_thickness;
 print "\n";
@@ -181,7 +182,7 @@ while(my $line=<$fileEpax>)
 	    #print $stdout;
 	    
 	    (my $file_out = $name_file) =~ s/\.[^.]+$//;
-	    $file_out_mocadi = $file_out."_temp_7.out";
+	    $file_out_mocadi = $file_out."_temp_6.out";
 	    
 	    open IN2, "<", $file_out_mocadi or die "error opening outfile  $!";
 	    my $target_th;

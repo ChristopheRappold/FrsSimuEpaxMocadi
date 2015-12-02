@@ -1,6 +1,7 @@
 #! /usr/bin/perl
 
-use lib "/u/crappold/frs/epax/usr/local/share/perl";
+#use lib "/u/crappold/frs/epax/usr/local/share/perl";
+use lib "./usr/lib/perl5";
 use IO::CaptureOutput qw/capture/;
 
 use threads;

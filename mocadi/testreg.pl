@@ -9,27 +9,27 @@ $target_th2 = $const2 * 10 ** $expon2;
 #print $target_th2."\n";
 
 
-open my $fileEpax, '<', $ARGV[0] or die "error opening $fileEpax: $!";
+# open my $fileEpax, '<', $ARGV[0] or die "error opening $fileEpax: $!";
 
-while(my $line=<$fileEpax>)
-{
-    if($line =~ /^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]*\.[0-9]*) (.+?) (.+?) [0-9]+/)
-    {
-	my $Af = $1;
-	my $Zf = $2;
-	my $Ap = $3;
-	my $Zp = $4;
-	my $At = $5;
-	my $Zt = $6;
-	my $Rho = $7;
-	my $xs = $8;
-	my $Ratio = $9;
+# while(my $line=<$fileEpax>)
+# {
+#     if($line =~ /^([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]*\.[0-9]*) (.+?) (.+?) [0-9]+/)
+#     {
+# 	my $Af = $1;
+# 	my $Zf = $2;
+# 	my $Ap = $3;
+# 	my $Zp = $4;
+# 	my $At = $5;
+# 	my $Zt = $6;
+# 	my $Rho = $7;
+# 	my $xs = $8;
+# 	my $Ratio = $9;
 
-#	print " line : $Af $Zf $Rho $xs and $Ratio ok !\n";
-    }
-}
+# #	print " line : $Af $Zf $Rho $xs and $Ratio ok !\n";
+#     }
+# }
 
-close $fileEpax;
+# close $fileEpax;
 
 open my $etcRoot, "<", "../RadioNuclides.txt" or die "error !";
 
@@ -146,3 +146,16 @@ while(!exists $table_ListStableLifeTime{$NameTemp3})
 }
 
 print "$NameTemp3 $Aparasist3 $Zparasist3\n";
+
+
+open my $fileMocadi, '<', "template_heb_2.in" or die "error opening $fileEpax: $!";
+
+while(my $line=<$fileMocadi>)
+{
+    if($line =~ /^\s*SAVE save\s?/)
+    {
+	print $line;
+    }
+}
+
+close $fileMocadi;
