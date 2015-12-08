@@ -95,39 +95,42 @@ public:
 	std::cout<<"E> Permutation vector in out not valid "<<in.size()<<" "<<out.size()<<std::endl;
 	return -1;
       }
+    double in2 = ComputeWeigth(in[0],in[1],NtypeComp);
+    if(TMath::Abs(in2)<1e-4)
+      return -2;
     if(type=="A B AB")
       {
 	out[0] = in[0];
 	out[1] = in[1];
-	out[2] = ComputeWeigth(in[0],in[1],NtypeComp);//1-in[0]-in[1];
+	out[2] = in2;//1-in[0]-in[1];
       }
     else if(type=="B A AB")
       {
 	out[0] = in[1];
 	out[1] = in[0];
-	out[2] = ComputeWeigth(in[0],in[1],NtypeComp);//1-in[0]-in[1];
+	out[2] = in2;//1-in[0]-in[1];
       }
     else if(type=="A AB B")
       {
 	out[0] = in[0];
-	out[1] = ComputeWeigth(in[0],in[1],NtypeComp);//1-in[0]-in[1];
+	out[1] = in2;//1-in[0]-in[1];
 	out[2] = in[1];
       }
     else if(type=="B AB A")
       {
 	out[0] = in[1];
-	out[1] = ComputeWeigth(in[0],in[1],NtypeComp);//1-in[0]-in[1];
+	out[1] = in2;//1-in[0]-in[1];
 	out[2] = in[0];
       }
     else if(type=="AB A B")
       {
-	out[0] = ComputeWeigth(in[0],in[1],NtypeComp);//1-in[0]-in[1];
+	out[0] = in2;//1-in[0]-in[1];
 	out[1] = in[0];
 	out[2] = in[1];
       }
     else if(type=="AB B A")
       {
-	out[0] = ComputeWeigth(in[0],in[1],NtypeComp);//1-in[0]-in[1];
+	out[0] = in2;//1-in[0]-in[1];
 	out[1] = in[1];
 	out[2] = in[0];
       }

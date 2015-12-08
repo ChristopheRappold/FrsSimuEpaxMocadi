@@ -45,7 +45,7 @@ static const std::string ElName2[111] = {
 
 
 
-int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string Hyp, int type = 0, std::string ICtype = "I-C", std::string Mtype = "A B AB", int Ntype = -1, int NtypeComp = 1, double minHist = 0)
+int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string Hyp, int type = 0, std::string ICtype = "I-C", std::string Mtype = "A B AB", int Ntype = -1, int NtypeComp = 1, double minHist = 0, int Nbin = 20)
 {
   const std::set<std::string> StableBeam = {"H1","H2","He3","He4","Li6","Li7","Be9","B10","B11","C12","C13","N14","N15","O16","O17","O18","F19","Ne20","Ne21","Ne22","Na23","Mg24","Mg25","Mg26","Al27","Si28","Si29","Si30","P31","S32","S33","S34","S36","Cl35","Cl37","Ar36","Ar38","Ar40"};
   
@@ -114,7 +114,9 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
 	continue;
       if(At == 2 && Zt == 1)
 	continue;
-      if(MeanEnergy-3*SigmaEnergy < 1600.)
+      // if(MeanEnergy-3*SigmaEnergy < 1600.)
+      // 	continue;
+      if(At == 6 && Zt == 3)
 	continue;
       intensity.push_back(PrimaryBeamInt*prod1*(1.-SurvivalRate));
       contamination.push_back((prod2+prod3+prod4)*(1.-SurvivalRate)*PrimaryBeamInt);
@@ -298,6 +300,8 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
   double Energyminmax [2] ={*std::min_element(EnergyM.begin(),EnergyM.end()),*std::max_element(EnergyM.begin(),EnergyM.end())};
   double Survivalminmax [2] ={*std::min_element(Survival.begin(),Survival.end()),*std::max_element(Survival.begin(),Survival.end())};
   double Transminmax [2] ={*std::min_element(Trans.begin(),Trans.end()),*std::max_element(Trans.begin(),Trans.end())};
+
+  Iminmax[1] = 2.e7;
   
   double Tmeansigma [2];
   double Imeansigma [2];
@@ -354,8 +358,8 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
   // TH3F* h_histCmTarget = new TH3F("h_histTickness","h_histThickness",NbinX,minHist,1.,NbinX,minHist,1.,NbinY,minHist,1.);
   // TH3F* h_histNameTarget = new TH3F("h_histNameTarget","h_histNameTarget",NbinX,minHist,1.,NbinX,minHist,1.,NbinY,minHist,1.);
 
-  Int_t NbinX = 30;
-  Int_t NbinY = 30;
+  Int_t NbinX = Nbin;
+  Int_t NbinY = Nbin;
   TH2F* h_hist = new TH2F("h_hist","h_hist",NbinX,minHist,1.,NbinY,minHist,1.);
   TH2F* h_histNameBeamPrimary = new TH2F("h_histNameBeamPrimary","h_histNameBeamPrimary",NbinX,minHist,1.,NbinY,minHist,1.);
   TH2F* h_histNameBeamSecondary = new TH2F("h_histNameBeamSecondary","h_histNameBeamSecondary",NbinX,minHist,1.,NbinY,minHist,1.);
@@ -400,7 +404,11 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
 	      auto it_findStable = StableBeam.find(it_secondaryReaction->nameB);
 	      if(it_findStable != StableBeam.end())
 		continue;
-	      double SecondTargetD = SecondTargetDensity[it_secondaryReaction->nameT];
+	      auto it_findTargetS = SecondTargetDensity.find(it_secondaryReaction->nameT);
+	      if(it_findTargetS == SecondTargetDensity.end())
+		continue;
+	      double SecondTargetD = it_findTargetS->second;
+
 	      //std::cout<<"case:"<<it_secondaryReaction->nameB<<" "<<it_secondaryReaction->nameT<<" CX :["<<it_secondaryReaction->cross_section<<" ]"<<std::endl;
 	      for(auto it_FBT = BeamTarget.cbegin(), it_FBT_end = BeamTarget.cend();it_FBT!= it_FBT_end;++it_FBT)
 		{
@@ -417,9 +425,11 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
 			  //std::cout<<" idCm :"<<idCmTarget<<std::endl;
 			  double tempT = it_FBT->second.TargetGramCm[idCmTarget];
 			  double tempI = it_FBT->second.ProdFrag[idCmTarget];
+			  if(tempI>Iminmax[1])
+			    tempI=Iminmax[1];
 			  double tempEpar[2] = {it_FBT->second.EnergyMean[idCmTarget],it_FBT->second.EnergySigma[idCmTarget]}; 
 
-			  double tempICX = it_FBT->second.ProdFrag[idCmTarget]*4*SecondTargetD*0.2*it_secondaryReaction->cross_section*6.02214129e-07*StrangenessProdNorm(tempEpar[0]); // 6.02409638554217e-07 = 1e-30/1.66e-24
+			  double tempICX = tempI*4.*SecondTargetD*0.2*it_secondaryReaction->cross_section*6.02214129e-07*StrangenessProdNorm(tempEpar[0]); // 6.02409638554217e-07 = 1e-30/1.66e-24
 			  double tempC = it_FBT->second.ProdPara1[idCmTarget]+it_FBT->second.ProdPara2[idCmTarget]+it_FBT->second.ProdPara3[idCmTarget];
 			  //double tempE = (2.e3-tempEpar[0])*(2.e3-tempEpar[0])/tempEpar[1]/tempEpar[1];
 			  if(ICtype == "I-C")
@@ -430,20 +440,22 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
 			  //     it_FBT->second.Print(5.);
 			  //     std::cout<<" Secondary: "<<it_secondaryReaction->nameB<<" "<<it_secondaryReaction->nameT<<" "<<tempICX<<std::endl;
 			  //   }
-			  h_Internal->Fill(5.,tempICX/640.);
 
-			  //if(tempICX<1)
-			  //continue;
+			  //h_Internal->Fill(5.,tempICX/640.);
+
+			  if(tempICX<0.5)
+			    continue;
 
 			  double Brho = compute.Brho(it_FBT->second.BT_ids[5],it_FBT->second.BT_ids[4],tempEpar[0]); 
+			  h_Internal->Fill(14.,Brho/10.);
+ 
 			  if(Brho>20.5)
 			    continue;
 			  //double tempE = 10*TMath::Gaus(2000,tempEpar[0],tempEpar[1]*5);
 			  
-			  h_Internal->Fill(11.,(tempT-Tmeansigma[0])/(Tmeansigma[1]));
-			  h_Internal->Fill(12.,(tempI-Imeansigma[0])/(Imeansigma[1]));
-			  h_Internal->Fill(13.,(tempEpar[0]-Energymeansigma[0])/(Energymeansigma[1]));
-			  h_Internal->Fill(14.,Brho);
+			  //h_Internal->Fill(11.,(tempT-Tmeansigma[0])/(Tmeansigma[1]));
+			  //h_Internal->Fill(12.,(tempI-Imeansigma[0])/(Imeansigma[1]));
+			  //h_Internal->Fill(13.,(tempEpar[0]-Energymeansigma[0])/(Energymeansigma[1]));
 			  
 			  
 			  std::vector<double> Input = {tempT,tempI,tempC,tempEpar[0]};
@@ -510,8 +522,10 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
 			  int res = compute.setPermutation(Mtype,inPar,outPar,NtypeComp);
 			  if(res==-1)
 			    return -1;
-			  
-			  double tempG =  - 1./0.5808*outPar[0]*Input[0] + 1./320*outPar[1]*tempICX + 1./5.4*outPar[2]*Input[3] ;//+ outPar[2]*Input[2] ;
+			  if(res==-2)
+			    continue;
+			  //double tempG =  - 1./0.5808*1./0.54*1/1.10*outPar[0]*Input[0] + 1./320*1./0.32*outPar[1]*tempICX + outPar[2]*Input[3] ;//+ outPar[2]*Input[2] ;
+			  double tempG =  - 1./0.5808*1./0.54*1/1.10*1./0.92*outPar[0]*Input[0] + (1./320*1./0.32*1./0.14*1./1.02*1./0.98)*outPar[1]*tempICX + 1./0.98*outPar[2]*((Input[3]-0.46)/(1.-0.46)) + 1./1.02*0.5*Input[1];//+ outPar[2]*Input[2]
 			  //double tempG =  - 1./0.5808*outPar[0]*Input[0] + 1./0.56448*outPar[1]*Input[1] + outPar[2]*Input[3] + 1./5.4*Input2[1];
 		  
 			  // h_Internal->Fill(0.,tempT);
@@ -519,10 +533,10 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
 			  // h_Internal->Fill(2.,tempC);
 			  // h_Internal->Fill(3.,tempEpar[0]);
 			  // h_Internal->Fill(4.,tempG);
-			  h_Internal->Fill(0.,1./0.5808*Input[0]);
-			  h_Internal->Fill(1.,1./0.56448*Input[1]);
-			  h_Internal->Fill(2.,Input[3]);
-			  h_Internal->Fill(3.,1./320.*tempICX);
+			  h_Internal->Fill(0.,1./0.5808*1./0.54*1./1.10*1./0.92*Input[0]);
+			  h_Internal->Fill(1.,1./1.02*Input[1]);
+			  h_Internal->Fill(2.,1./320.*1./0.32*1./0.14*1./1.02*1./0.98*tempICX);
+			  h_Internal->Fill(3.,1./0.98*(Input[3]-0.46)/(1.-0.46));
 
 			  if(tempG > max_G)
 			    {
@@ -584,10 +598,10 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
 	  h_hist->Fill(alpha,beta,max_G);
 	  h_histNameBeamPrimary->Fill(alpha,beta,nameTemplateB);
 	  h_histNameBeamSecondary->Fill(alpha,beta,nameTemplateF);
-	  h_histCmTarget->Fill(alpha,beta,max_CmTarget+1);
+	  h_histCmTarget->Fill(alpha,beta,max_CmTarget);
 	  h_histNameTarget->Fill(alpha,beta,nameTemplateT);
-	  h_histEnergy->Fill(alpha,beta,maxEnergyM);
-	  h_histCrossSection->Fill(alpha,beta,maxCrossSection);
+	  h_histEnergy->Fill(alpha,beta,TMath::FloorNint(maxEnergyM*10)*1e-4);
+	  h_histCrossSection->Fill(alpha,beta,TMath::FloorNint(maxCrossSection*10)*0.1);
 
 
 	}
