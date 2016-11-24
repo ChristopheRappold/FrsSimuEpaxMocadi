@@ -661,7 +661,7 @@ int UpdateFile(std::string name_in,std::string option="all",const std::vector<st
     }
   else
     {
-      ext = "CutSelUpated_new.dat";
+      ext = "CutSelUpated_new2.dat";
     }
   outname+=ext;
   outfile.open(outname.c_str());
@@ -720,8 +720,9 @@ int UpdateFileWithFrag(std::string nameIN)
 {
   //std::vector<std::string> vecF = {"18N","11C","19F","13N","21Ne","13C","14O","17F","14N","17Ne","19O","13O","18O","12C","15N","18Ne","19Ne","15C","12N"};
   //std::vector<std::string> vecF = {"12C","15C","15N","12N","13O","18O","18Ne","19Ne"};
-  std::vector<std::string> vecF = {"10C","18N","11C","13N","21Ne","13C","14O","17F","17Ne","19O"};
-  //std::vector<std::string> vecF = {"10C"};
+  //std::vector<std::string> vecF = {"10C","18N","11C","13N","21Ne","13C","14O","17F","17Ne","19O"};
+  std::vector<std::string> vecF = {"11B","12B","9B","10Be","11Be","12Be","14C","16C","9C","16F","18F","21F","16N","17N","22Ne","23Ne","24Ne","25Ne","15O","16O"};
+  
   return UpdateFile(nameIN,"not",vecF);
 }
 
@@ -1160,6 +1161,9 @@ void Plots(int Z, int A, const std::string& name_in, double Eth = 2000.)
       
       if(Zt == 1) 
 	continue;
+
+      if(Zt != 4 && Zt != 5 && Zt != 6)
+	continue;
       
       if(TMath::Abs(EnergyMean)<1e-1 || TMath::Abs(EnergySigma)<1e-1)
 	continue;
@@ -1368,11 +1372,11 @@ void Plots(int Z, int A, const std::string& name_in, double Eth = 2000.)
   TCanvas* c1 = new TCanvas("c1","c1",500,500);
   c1->cd();
   //GraphAll[0]->Draw("A*L");
-  GraphM->Draw("a*l");
+  GraphM->Draw("a*c");
   TCanvas* c2 = new TCanvas("c2","c2",500,500);
   c2->cd();
   //GraphAllRatio[0]->Draw("A*L");
-  GraphRatioM->Draw("a*l");
+  GraphRatioM->Draw("a*c");
 
   TCanvas* c3 = new TCanvas("c3","c3",500,500);
   c3->cd();
