@@ -31,46 +31,20 @@
 
 #include "Analysis.h"
 
-static const std::string ElName2[111] = {
-  "n","H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg",
-  "Al","Si","P","S","Cl","Ar","K","Ca","Sc","Ti","V","Cr",
-  "Mn","Fe","Co","Ni","Cu","Zn","Ga","Ge","As","Se","Br","Kr",
-  "Rb","Sr","Y","Zr","Nb","Mo","Tc","Ru","Rh","Pd","Ag","Cd",
-  "In","Sn","Sb","Te","I","Xe","Cs","Ba","La","Ce","Pr","Nd",
-  "Pm","Sm","Eu","Gd","Tb","Dy","Ho","Er","Tm","Yb","Lu","Hf",
-  "Ta","W","Re","Os","Ir","Pt","Au","Hg","Tl","Pb","Bi","Po",
-  "At","Rn","Fr","Ra","Ac","Th","Pa","U","Np","Pu","Am","Cm",
-  "Bk","Cf","Es","Fm","Md","No","Lr","Rf","Db","Sg","Bh","Hs",
-  "Mt","Ds" };
 
-
-
-int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string Hyp, int type = 0, std::string ICtype = "I-C", std::string Mtype = "A B AB", int Ntype = -1, int NtypeComp = 1, double minHist = 0, int Nbin = 20)
+auto AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string Hyp, int type = 0, std::string ICtype = "I-C", std::string Mtype = "A B AB", int Ntype = -1, int NtypeComp = 1, double minHist = 0, int Nbin = 20, bool interp = false, bool withStableBeam = false, bool noHisto = false)
 {
+  std::cout<<" Processing :"<<Hyp<<" "<<noHisto<<std::endl;
+
   const std::set<std::string> StableBeam = {"H1","H2","He3","He4","Li6","Li7","Be9","B10","B11","C12","C13","N14","N15","O16","O17","O18","F19","Ne20","Ne21","Ne22","Na23","Mg24","Mg25","Mg26","Al27","Si28","Si29","Si30","P31","S32","S33","S34","S36","Cl35","Cl37","Ar36","Ar38","Ar40"};
   
-  const std::map<int,int> StableBeam2 = {{1,1},{1,2},{2,3},{2,4},{3,6},{3,7},{4,9},{5,10},{5,11},{6,12},{6,13},{7,14},{7,15},{8,16},{8,17},{8,18},{9,19},{10,20},{10,21},{10,22},{11,23},{12,24},{12,25},{12,26},{13,27},{14,28},{14,29},{14,30},{15,31},{16,32},{16,33},{16,34},{16,36},{17,35},{17,37},{18,36},{18,38},{18,40}};
-
-  std::set<std::string> RejectedBeam;
-  for(auto& it_beam : StableBeam2 )
-    {
-      std::string nameF1("");
-      nameF1+= ElName2[it_beam.first];
-      nameF1+=std::to_string(it_beam.second+1);
-      //std::string SnameF(nameF.Data());
-      std::string nameF2("");
-      nameF2+= ElName2[it_beam.first];
-      nameF2+=std::to_string(it_beam.second-1);
-
-      RejectedBeam.emplace(nameF1);
-      RejectedBeam.emplace(nameF2);
-    }
   std::map<std::string,double> SecondTargetDensity;
   SecondTargetDensity["C12"] = 2.21/12;
   SecondTargetDensity["Be9"] = 1.85/9;
-    
-  double PrimaryBeamInt = 1e10;
-
+  
+  const double PrimaryBeamInt = 5.e9;
+  const double IntensityMax = 5.e6;
+  
   std::ifstream ifs ( namefileEpax.c_str() );
 
   //std::string temp_line;
@@ -85,16 +59,7 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
 
   double prod4;
   
-  std::map<std::string,tuple_graph > BeamTarget;
-
-  std::vector<double> intensity;
-  std::vector<double> contamination;
-  std::vector<double> targetLength;
-  std::set<int> targetLength2;
-  std::vector<double> EnergyM;
-  std::vector<double> Survival;
-  std::vector<double> Trans;
-  std::vector<double> IntCon;
+  std::map<std::string,tuple_graph > BeamTargetOriginal;
 
   std::set<std::string> FragAvailable;
   
@@ -118,15 +83,7 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
       // 	continue;
       if(At == 6 && Zt == 3)
 	continue;
-      intensity.push_back(PrimaryBeamInt*prod1*(1.-SurvivalRate));
-      contamination.push_back((prod2+prod3+prod4)*(1.-SurvivalRate)*PrimaryBeamInt);
-      targetLength.push_back(ProdRate*CmTarget);
-      
-      IntCon.push_back(PrimaryBeamInt*(prod1-prod2+prod3+prod4)*(1.-SurvivalRate));
-      EnergyM.push_back(MeanEnergy);
-      Survival.push_back(1.-SurvivalRate);
-      Trans.push_back(Transmission);
-      
+
       std::vector<int> idsBT ;
       idsBT.push_back(Ap);
       idsBT.push_back(Zp);
@@ -156,27 +113,28 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
 
       FragAvailable.emplace(SnameF);
       
-      std::map<std::string,tuple_graph>::iterator it_FBT = BeamTarget.find(SnameAll);
-      if(it_FBT==BeamTarget.end())
+      std::map<std::string,tuple_graph>::iterator it_FBT = BeamTargetOriginal.find(SnameAll);
+      if(it_FBT==BeamTargetOriginal.end())
 	{
-	  tuple_graph temp(SnameBT,SnameF,idsBT,CmTarget,ProdRate*CmTarget,PrimaryBeamInt*prod1*(1.-SurvivalRate),PrimaryBeamInt*prod2*(1.-SurvivalRate),PrimaryBeamInt*prod3*(1.-SurvivalRate),PrimaryBeamInt*prod4*(1.-SurvivalRate),MeanEnergy,SigmaEnergy,SurvivalRate);
-	  BeamTarget.insert(std::pair<std::string,tuple_graph>(SnameAll,temp));
+	  tuple_graph temp(SnameBT,SnameF,idsBT,CmTarget,ProdRate*CmTarget,PrimaryBeamInt*prod1*(1.-SurvivalRate),PrimaryBeamInt*prod2*(1.-SurvivalRate),PrimaryBeamInt*prod3*(1.-SurvivalRate),PrimaryBeamInt*prod4*(1.-SurvivalRate),MeanEnergy,SigmaEnergy,SurvivalRate,Transmission);
+	  BeamTargetOriginal.insert(std::pair<std::string,tuple_graph>(SnameAll,temp));
 	}
       else
 	{
-	  it_FBT->second.AddValue(CmTarget,ProdRate*CmTarget,PrimaryBeamInt*prod1*(1.-SurvivalRate),PrimaryBeamInt*prod2*(1.-SurvivalRate),PrimaryBeamInt*prod3*(1.-SurvivalRate),PrimaryBeamInt*prod4*(1.-SurvivalRate),MeanEnergy,SigmaEnergy,SurvivalRate);
+	  it_FBT->second.AddValue(CmTarget,ProdRate*CmTarget,PrimaryBeamInt*prod1*(1.-SurvivalRate),PrimaryBeamInt*prod2*(1.-SurvivalRate),PrimaryBeamInt*prod3*(1.-SurvivalRate),PrimaryBeamInt*prod4*(1.-SurvivalRate),MeanEnergy,SigmaEnergy,SurvivalRate,Transmission);
 	}
 
-      if(IntCon.back() < MinMaxCheck[0])
-	{
-	  MinMaxCheck[0] = IntCon.back();
-	  NameCheck[0] = SnameAll;
-	}
-      if(IntCon.back() > MinMaxCheck[1])
-	{
-	  MinMaxCheck[1] = IntCon.back();
-	  NameCheck[1] = SnameAll;
-	}
+      
+      // if(IntCon.back() < MinMaxCheck[0])
+      // 	{
+      // 	  MinMaxCheck[0] = IntCon.back();
+      // 	  NameCheck[0] = SnameAll;
+      // 	}
+      // if(IntCon.back() > MinMaxCheck[1])
+      // 	{
+      // 	  MinMaxCheck[1] = IntCon.back();
+      // 	  NameCheck[1] = SnameAll;
+      // 	}
       
     }
 
@@ -184,9 +142,9 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
 
   
   std::ifstream ifsHyp (namefileHyp.c_str());
-  std::set<nameBTtuple,CompBTTuple> hyp_prodAll;
+  std::set<HypDataProd,CompHypDataProd> hyp_prodAll;
 
-  std::getline(ifsHyp,temp_line);
+  //std::getline(ifsHyp,temp_line);
   double max_CX = -1 ;
   while(std::getline(ifsHyp,temp_line))
     {
@@ -196,7 +154,7 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
       stream >> hyp >> nb;
       if(hyp != Hyp)
 	continue;
-      std::cout<<temp_line<<std::endl;
+      //std::cout<<temp_line<<std::endl;
       nb /= 2;
       for(int id = 0; id<nb ; ++id)
 	{
@@ -205,22 +163,27 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
 
 	  stream >> BT >> CX1;
 
-	  std::cout<<" ---> id#"<<id<<" "<<BT<<" "<<CX1;
+	  //std::cout<<" ---> id#"<<id<<" "<<BT<<" "<<CX1;
 	  std::size_t foundPlus = BT.find("+");
 	  if(foundPlus == std::string::npos )
 	    {
 	      std::cout<<"E> no + ! "<<id<<" "<<BT<<" "<<hyp<<std::endl;
-	      return -1;
+	      return std::make_tuple(static_cast<size_t>(0),0.,0.,-1.,-1.,0.,-1.,-1.);
 	    }
-	  nameBTtuple nameBT;
+	  HypDataProd nameBT;
 	  nameBT.nameB=BT.substr(0,foundPlus);
 	  nameBT.nameT=BT.substr(foundPlus+1);
 	  nameBT.cross_section = CX1;
-	  
+
+	  auto it_findTargetS = SecondTargetDensity.find(nameBT.nameT);
+	  if(it_findTargetS == SecondTargetDensity.end())
+	    continue;
+	  nameBT.SecondTargetD = it_findTargetS->second;
+
 	  // auto isSecondaryBeamAvailable = FragAvailable.find(nameBT.nameB);
 	  // if(isSecondaryBeamAvailable != FragAvailable.end())
 	  //   {
-	  std::cout<<" beam:"<<nameBT.nameB<<" target:"<<nameBT.nameT<<" "<<nameBT.cross_section<<std::endl; 
+	  //std::cout<<" beam:"<<nameBT.nameB<<" target:"<<nameBT.nameT<<" "<<nameBT.cross_section<<std::endl; 
 	  auto ret = hyp_prodAll.emplace(nameBT);
 	  if (!ret.second)
 	    std::cout << "already exists in hyp_prod\n";
@@ -235,19 +198,86 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
 	}
     }
 
-  auto Pred = [&] (const nameBTtuple& nameBT) -> bool
+    
+  std::map<std::string,tuple_graph > BeamTarget;
+  if(interp == true)
+    {
+      Interpole doInterpoling;
+      for(auto it_FBT = BeamTargetOriginal.cbegin(), it_FBT_end = BeamTargetOriginal.cend(); it_FBT != it_FBT_end; ++it_FBT)
+	{
+	  auto tempTuple = doInterpoling.Inter(it_FBT->second);
+	  BeamTarget.emplace(it_FBT->first,tempTuple);
+	}
+    }
+  else
+    BeamTarget = BeamTargetOriginal;
+
+  //const std::map<int,int> StableBeam = {{1,1},{1,2},{2,3},{2,4},{3,6},{3,7},{4,9},{5,10},{5,11},{6,12},{6,13},{7,14},{7,15},{8,16},{8,17},{8,18},{9,19},{10,20},{10,21},{10,22},{11,23},{12,24},{12,25},{12,26},{13,27},{14,28},{14,29},{14,30},{15,31},{16,32},{16,33},{16,34},{16,36},{17,35},{17,37},{18,36},{18,38},{18,40}};
+  if(withStableBeam==true)
+    {
+      const double BeamIntensityPrimary = 1.e7;
+      for(auto& it_stable : std::map<int,int>({{1,1},{1,2},{2,3},{2,4},{3,6},{3,7},{4,9},{5,10},{5,11},{6,12},{6,13},{7,14},{7,15},{8,16},{8,17},{8,18},{9,19},{10,20},{10,21},{10,22},{11,23},{12,24},{12,25},{12,26},{13,27},{14,28},{14,29},{14,30},{15,31},{16,32},{16,33},{16,34},{16,36},{17,35},{17,37},{18,36},{18,38},{18,40}}) )
+	{
+	  
+	  std::vector<int> idsBT ;
+	  idsBT.push_back(0);
+	  idsBT.push_back(0);
+	  idsBT.push_back(0);
+	  idsBT.push_back(0);
+	  idsBT.push_back(it_stable.second);
+	  idsBT.push_back(it_stable.first);
+	  TString nameF("");
+	  nameF+= ElName2[it_stable.first];
+	  nameF+=it_stable.second;
+	  TString nameP("Primary");
+	  TString nameT("Primary"); 
+	  
+	  std::string SnameF(nameF.Data());
+	  std::string SnameP(nameP.Data());
+	  std::string SnameT(nameT.Data());
+	  std::string SnameAll(SnameF);
+	  SnameAll+=SnameP;
+	  SnameAll+=SnameT;
+	  std::string SnameBT(SnameP);
+	  SnameBT+="+";
+	  SnameBT+=SnameT;
+	  
+	  FragAvailable.emplace(SnameF);
+	  
+	  std::map<std::string,tuple_graph>::iterator it_FBT = BeamTarget.find(SnameAll);
+	  if(it_FBT==BeamTarget.end())
+	    {
+	      
+	      tuple_graph temp(SnameBT,SnameF,idsBT,0,0,BeamIntensityPrimary,0,0,0,2000.,0.1,1.,1.);
+	      BeamTarget.insert(std::pair<std::string,tuple_graph>(SnameAll,temp));
+	    }
+	  else
+	    {
+	      std::cout<<"!> stable beam should be unique ! "<<SnameAll<<std::endl;
+	    }      
+	}
+    }
+  // std::cout<<"FragAvailable :";
+  // for(auto& item : FragAvailable)
+  //   {
+  //     std::cout<<" "<<item;
+  //   }
+  // std::cout<<std::endl;
+  
+  auto Pred = [&FragAvailable,noHisto,max_CX] (const HypDataProd& nameBT) -> bool
 	       {
 		 auto isFound = FragAvailable.find(nameBT.nameB);
 		 if(isFound != FragAvailable.end())
 		   return true;
 		 else
 		   {
-		     std::cout<<" 2nd beam not available !"<<" beam:"<<nameBT.nameB<<" target:"<<nameBT.nameT<<" "<<nameBT.cross_section<<" "<<nameBT.cross_section/max_CX<<std::endl;
+		     if(noHisto==false)
+		       std::cout<<" 2nd beam not available !"<<" beam:"<<nameBT.nameB<<" target:"<<nameBT.nameT<<" "<<nameBT.cross_section<<" "<<nameBT.cross_section/max_CX<<std::endl;
 		     return false;
 		   }
 	       };
   
-  std::set<nameBTtuple,CompBTTuple> hyp_prod;
+  std::set<HypDataProd,CompHypDataProd> hyp_prod;
   for(auto item : hyp_prodAll)
     if(Pred(item))
       {
@@ -258,25 +288,24 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
   if(hyp_prod.size()==0)
     {
       std::cout<<"!> no hypernuclei selected ! "<<Hyp<<std::endl;
-      return -2;
+      return std::make_tuple(static_cast<size_t>(0),0.,0.,-1.,-1.,0.,-1.,-1.);
     }
 
-  std::cout<<"Hyp required: "<<Hyp<<std::endl<<" 2nd Reaction:";
-  for(auto hypBT : hyp_prod)
-    {
-      //if(hypBT.nameT=="C12" && hypBT.nameB=="N12")
-      std::cout<<" <"<<hypBT.nameB<<"> + <"<<hypBT.nameT<<"> ("<<hypBT.cross_section<<")"<<std::endl;
-    }
-  std::cout<<std::endl;
+  // std::cout<<"Hyp required: "<<Hyp<<std::endl<<" 2nd Reaction:";
+  // for(auto hypBT : hyp_prod)
+  //   {
+  //     //if(hypBT.nameT=="C12" && hypBT.nameB=="N12")
+  //     std::cout<<" <"<<hypBT.nameB<<"> + <"<<hypBT.nameT<<"> ("<<hypBT.cross_section<<")"<<std::endl;
+  //   }
+  // std::cout<<std::endl;
 
-  
   
 
   // for(std::map<std::string, tuple_graph>::const_iterator it_FBT = BeamTarget.begin(), it_FBT_end = BeamTarget.end();it_FBT!= it_FBT_end;++it_FBT)
-  //   {
+  //    {
   //      std::cout<<"*Entry :"<<it_FBT->first<<std::endl;
   //      it_FBT->second.Print();
-  //   }
+  //    }
 
   // auto it_FBTmin = BeamTarget.find(NameCheck[0]);
   // std::cout<<"* Entry min :"<<it_FBTmin->first<<std::endl;
@@ -286,73 +315,82 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
   // std::cout<<"* Entry max :"<<it_FBTmax->first<<std::endl;
   // it_FBTmax->second.Print();
 
-  auto it_FBTtest = BeamTarget.find("N12N14Be9");
-  std::cout<<"* Entry test :"<<it_FBTtest->first<<std::endl;
-  it_FBTtest->second.Print();
-
-  Compute compute;
-  LambdaCrossSectionFunction StrangenessProdNorm(2000.);
-  
-  double Tminmax[2] = {*std::min_element(targetLength.begin(),targetLength.end()),*std::max_element(targetLength.begin(),targetLength.end())};
-  double Iminmax[2] = {*std::min_element(intensity.begin(),intensity.end()),*std::max_element(intensity.begin(),intensity.end())};
-  double Cminmax[2] = {*std::min_element(contamination.begin(),contamination.end()),*std::max_element(contamination.begin(),contamination.end())};
-  double ICminmax[2] = {*std::min_element(IntCon.begin(),IntCon.end()),*std::max_element(IntCon.begin(),IntCon.end())};
-  double Energyminmax [2] ={*std::min_element(EnergyM.begin(),EnergyM.end()),*std::max_element(EnergyM.begin(),EnergyM.end())};
-  double Survivalminmax [2] ={*std::min_element(Survival.begin(),Survival.end()),*std::max_element(Survival.begin(),Survival.end())};
-  double Transminmax [2] ={*std::min_element(Trans.begin(),Trans.end()),*std::max_element(Trans.begin(),Trans.end())};
-
-  Iminmax[1] = 2.e7;
-  
-  double Tmeansigma [2];
-  double Imeansigma [2];
-  double Cmeansigma [2];
-  double ICmeansigma [2];
-  double Energymeansigma [2];
-  double Survivalmeansigma [2];
-  double Transmeansigma [2];
-  
-  compute.computeMeanSigma(intensity,Imeansigma);
-  compute.computeMeanSigma(targetLength,Tmeansigma);
-  compute.computeMeanSigma(contamination,Cmeansigma);
-  compute.computeMeanSigma(IntCon,ICmeansigma);
-  compute.computeMeanSigma(EnergyM, Energymeansigma);
-  compute.computeMeanSigma(Survival, Survivalmeansigma);
-  compute.computeMeanSigma(Trans, Transmeansigma);
-
-  double Tquantile [3];
-  double Iquantile [3];
-  double Cquantile [3];
-  double ICquantile [3];
-  double Energyquantile [3];
-  double Survivalquantile [3];
-  double Transquantile [3];
-  
-  compute.computeQuantile(intensity,Iquantile);
-  compute.computeQuantile(targetLength,Tquantile);
-  compute.computeQuantile(contamination,Cquantile);
-  compute.computeQuantile(IntCon,ICquantile);
-  compute.computeQuantile(EnergyM, Energyquantile);
-  compute.computeQuantile(Survival, Survivalquantile);
-  compute.computeQuantile(Trans, Transquantile);
-
-  
-  std::vector<std::vector<double*> > RangeAll = {{Tminmax,Iminmax,Cminmax,Energyminmax,Survivalminmax,Transminmax},
-						 {Tmeansigma,Imeansigma,Cmeansigma,Energymeansigma,Survivalmeansigma,Transmeansigma},
-						 {Tquantile,Iquantile,Cquantile,Energyquantile,Survivalquantile,Transquantile}};
-
-    if(ICtype == "I-C")
+  if(noHisto==false)
     {
-      RangeAll[0][2] = ICminmax;
-      RangeAll[1][2] = ICmeansigma;
-      RangeAll[2][2] = ICquantile;
+      auto it_FBTtest = BeamTarget.find("N12N14Be9");
+      std::cout<<"* Entry test :"<<it_FBTtest->first<<std::endl;
+      it_FBTtest->second.Print();
+    }
+  Compute compute;
+  RejectedBeamStruct Reject;
+  std::vector<double> intensity;
+  std::vector<double> contamination;
+  std::vector<double> targetLength;
+  std::vector<double> EnergyM;
+  std::vector<double> Survival;
+  std::vector<double> Trans;
+  std::vector<double> IntCon;
+  std::vector<double> crossX;
+
+  Minimizer minimizer(compute,ICtype, type, Mtype, NtypeComp, 2000.,0.5);
+  
+  for(auto it_secondaryReaction = hyp_prod.cbegin(), it_secondaryReactionEnd = hyp_prod.cend(); it_secondaryReaction != it_secondaryReactionEnd; ++it_secondaryReaction)
+    {
+      if(withStableBeam==false)
+	{
+	  auto it_findStable = StableBeam.find(it_secondaryReaction->nameB);
+	  if(it_findStable != StableBeam.end())
+	    continue;
+	}
+      auto it_findTargetS = SecondTargetDensity.find(it_secondaryReaction->nameT);
+      if(it_findTargetS == SecondTargetDensity.end())
+	continue;
+      auto HypData = *it_secondaryReaction;
+      //std::cout<<"case:"<<it_secondaryReaction->nameB<<" "<<it_secondaryReaction->nameT<<" CX :["<<it_secondaryReaction->cross_section<<" ]"<<std::endl;
+      for(auto it_FBT = BeamTarget.cbegin(), it_FBT_end = BeamTarget.cend();it_FBT!= it_FBT_end;++it_FBT)
+	{
+	  auto it_findRejected = Reject.RejectedBeam.find(it_FBT->second.F);
+	  if(it_findRejected != Reject.RejectedBeam.end() && it_FBT->second.BT !="Primary+Primary")
+	    continue;
+
+	  if(HypData.nameB == it_FBT->second.F )
+	    {	
+	      for(unsigned int idCmTarget = 0; idCmTarget< it_FBT->second.TargetCm.size();++idCmTarget)
+		{
+
+		  auto res_Min = minimizer.CheckConditions(0.4,0.6,idCmTarget,it_FBT->second,HypData,IntensityMax);
+		  int error_res = std::get<0>(res_Min);
+		  if(error_res!=0)
+		    continue;
+		  
+		  intensity.push_back(it_FBT->second.ProdFrag[idCmTarget]);
+		  contamination.push_back(it_FBT->second.ProdPara1[idCmTarget]+it_FBT->second.ProdPara2[idCmTarget]+it_FBT->second.ProdPara3[idCmTarget]);
+		  targetLength.push_back(it_FBT->second.TargetGramCm[idCmTarget]);      
+		  IntCon.push_back(it_FBT->second.ProdFrag[idCmTarget]-(it_FBT->second.ProdPara1[idCmTarget]+it_FBT->second.ProdPara2[idCmTarget]+it_FBT->second.ProdPara3[idCmTarget]));
+		  EnergyM.push_back(it_FBT->second.EnergyMean[idCmTarget]);
+		  Survival.push_back(1.-it_FBT->second.Survival[idCmTarget]);
+		  Trans.push_back(it_FBT->second.Trans[idCmTarget]);
+		  crossX.push_back(std::get<2>(res_Min));
+		}
+	    }
+	}
+    }
+  if(crossX.size()==0)
+    {
+      std::cout<<"--- !> Nothing to search "<<std::endl;
+      return std::make_tuple(static_cast<size_t>(0),0.,0.,-1.,-1.,0.,-1.,-1.);
+    }
+  Regularize Reg(targetLength, intensity, contamination, IntCon, EnergyM, Survival, Trans, crossX, ICtype, IntensityMax);
+
+  if(noHisto == false)
+    {
+      std::cout<<" mix max "<<Reg.Tminmax[0]<<" "<<Reg.Tminmax[1]<<" "<<Reg.Iminmax[0]<<" "<<Reg.Iminmax[1]<<" "<<Reg.ICminmax[0]<<" "<<Reg.ICminmax[1]<<std::endl;
+      std::cout<<" mean sigma "<<Reg.Imeansigma[0]<<"+-"<<Reg.Imeansigma[1]<<" "<<Reg.Energymeansigma[0]<<" "<<Reg.Energymeansigma[1]<<std::endl;
+  
+      std::cout<<" TestRange "<<Reg.RangeAll[1][1][0]<<" "<<Reg.RangeAll[1][3][0]<<std::endl;
+      std::cout<<" type : "<<type<<" "<<ICtype<<std::endl;
     }
 
-  std::cout<<" mix max "<<Tminmax[0]<<" "<<Tminmax[1]<<" "<<Iminmax[0]<<" "<<Iminmax[1]<<" "<<ICminmax[0]<<" "<<ICminmax[1]<<std::endl;
-  std::cout<<" mean sigma "<<Imeansigma[0]<<"+-"<<Imeansigma[1]<<" "<<Energymeansigma[0]<<" "<<Energymeansigma[1]<<std::endl;
-  
-  std::cout<<" TestRange "<<RangeAll[1][1][0]<<" "<<RangeAll[1][3][0]<<std::endl;
-  std::cout<<" type : "<<type<<" "<<ICtype<<std::endl;
-  
   // TH3F* h_hist = new TH3F("h_hist","h_hist",NbinX,minHist,1.,NbinX,minHist,1.,NbinY,minHist,1.);
   // TH3F* h_histNameBeam = new TH3F("h_histNameBeam","h_histNameBeam",NbinX,minHist,1.,NbinX,minHist,1.,NbinY,minHist,1.);
   // TH3F* h_histCmTarget = new TH3F("h_histTickness","h_histThickness",NbinX,minHist,1.,NbinX,minHist,1.,NbinY,minHist,1.);
@@ -360,36 +398,72 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
 
   Int_t NbinX = Nbin;
   Int_t NbinY = Nbin;
-  TH2F* h_hist = new TH2F("h_hist","h_hist",NbinX,minHist,1.,NbinY,minHist,1.);
-  TH2F* h_histNameBeamPrimary = new TH2F("h_histNameBeamPrimary","h_histNameBeamPrimary",NbinX,minHist,1.,NbinY,minHist,1.);
-  TH2F* h_histNameBeamSecondary = new TH2F("h_histNameBeamSecondary","h_histNameBeamSecondary",NbinX,minHist,1.,NbinY,minHist,1.);
-  TH2F* h_histCrossSection = new TH2F("h_histCrosssection","h_histCrossSection",NbinX,minHist,1.,NbinY,minHist,1.);
-  TH2F* h_histEnergy = new TH2F("h_histEnergy","h_histEnergy",NbinX,minHist,1.,NbinY,minHist,1.);
-  TH2F* h_histCmTarget = new TH2F("h_histThickness","h_histThickness",NbinX,minHist,1.,NbinY,minHist,1.);
-  TH2F* h_histNameTarget = new TH2F("h_histNameTarget","h_histNameTarget",NbinX,minHist,1.,NbinY,minHist,1.);
-
-  TH2F* h_Internal = new TH2F("h_internal","h_internal",15,0,15,1000,-10,10);
-
+  double deltaX = (1.-minHist)/static_cast<double>(NbinX);
+  double deltaY = (1.-minHist)/static_cast<double>(NbinY);
+  
+  std::vector<double> Allalpha(NbinX);
+  std::vector<double> Allbeta(NbinY);
+  for(size_t i = 0;i < Allalpha.size();++i)
+    Allalpha[i] = minHist + (i+0.5)*deltaX; 
+  for(size_t i = 0;i < Allalpha.size();++i)
+    Allbeta[i] = minHist + (i+0.5)*deltaY; 
+  
+  Histo histo;
+  histo.Dohisto = noHisto;
+  if(noHisto==false)
+    {
+      histo.h_hist = new TH2F("h_hist","h_hist",NbinX,minHist,1.,NbinY,minHist,1.);
+      histo.h_histNameBeamPrimary = new TH2F("h_histNameBeamPrimary","h_histNameBeamPrimary",NbinX,minHist,1.,NbinY,minHist,1.);
+      histo.h_histNameBeamSecondary = new TH2F("h_histNameBeamSecondary","h_histNameBeamSecondary",NbinX,minHist,1.,NbinY,minHist,1.);
+      histo.h_histCrossSection = new TH2F("h_histCrosssection","h_histCrossSection",NbinX,minHist,1.,NbinY,minHist,1.);
+      histo.h_histEnergy = new TH2F("h_histEnergy","h_histEnergy",NbinX,minHist,1.,NbinY,minHist,1.);
+      histo.h_histCmTarget = new TH2F("h_histThickness","h_histThickness",NbinX,minHist,1.,NbinY,minHist,1.);
+      histo.h_histNameTarget = new TH2F("h_histNameTarget","h_histNameTarget",NbinX,minHist,1.,NbinY,minHist,1.);
+      histo.h_Internal = new TH2F("h_internal","h_internal",15,0,15,1000,-10,10);
+    }
+  else
+    {
+      histo.h_hist = nullptr;
+      histo.h_histNameBeamPrimary = nullptr;      
+      histo.h_histNameBeamSecondary = nullptr;
+      histo.h_histCrossSection = nullptr;
+      histo.h_histEnergy = nullptr;
+      histo.h_histCmTarget = nullptr;
+      histo.h_histNameTarget = nullptr;      
+      histo.h_Internal = nullptr;
+    }
   double maxMax = -99999.;
   std::set<dataMax,CompdataMax> maxMaxId;
   //std::vector<double> maxMaxIdValue(2);
-
-  for(int i=1;i<=h_hist->GetNbinsX();++i)
+  
+  int DisCount = 0;
+  //for(int i=1;i<=histo.h_hist->GetNbinsX();++i)
+  for(size_t i = 0; i< Allalpha.size();++i)
     {
-      for(int j=1;j<=h_hist->GetNbinsY();++j)
-	//for(int k=1;k<=h_hist->GetNbinsZ();++k)
+      
+      //for(int j=1;j<=histo.h_hist->GetNbinsY();++j)
+      for(size_t j = 0; j<Allbeta.size(); ++j)
 	{
-	  double alpha = h_hist->GetXaxis()->GetBinCenter(i);
-	  double beta  = h_hist->GetYaxis()->GetBinCenter(j);
-	  //double gamma  = h_hist->GetZaxis()->GetBinCenter(k);
+	  ++DisCount;
+	  if(DisCount==10)
+	    {
+	      std::cout<<"Loop# ["<<i<<" "<<j<<" ]\n";
+	      DisCount=0;
+	    }
+	  //double alpha = histo.h_hist->GetXaxis()->GetBinCenter(i);
+	  //double beta  = histo.h_hist->GetYaxis()->GetBinCenter(j);
 
+	  double alpha = Allalpha[i];
+	  double beta  = Allbeta[j];
+
+	  //double gamma  = h_hist->GetZaxis()->GetBinCenter(k);
 	  //double gamma = ComputeWeigth(alpha,beta,NtypeComp);
 
 	  if(compute.ParAcceptable(alpha,beta,Ntype) == false)
 	    continue;
 
 	  double max_G = -1.e100;
-	  int max_CmTarget = -1;
+	  double max_CmTarget = -1;
 	  std::vector<int> max_nameIds(6,0);
 	  double maxIntensity = 0.;
 	  double maxContamination = 0.;
@@ -400,155 +474,49 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
 
 	  for(auto it_secondaryReaction = hyp_prod.cbegin(), it_secondaryReactionEnd = hyp_prod.cend(); it_secondaryReaction != it_secondaryReactionEnd; ++it_secondaryReaction)
 	    {
-	      
-	      auto it_findStable = StableBeam.find(it_secondaryReaction->nameB);
-	      if(it_findStable != StableBeam.end())
-		continue;
+	      if(withStableBeam==false)
+		{
+		  auto it_findStable = StableBeam.find(it_secondaryReaction->nameB);
+		  if(it_findStable != StableBeam.end())
+		    continue;
+		}
 	      auto it_findTargetS = SecondTargetDensity.find(it_secondaryReaction->nameT);
 	      if(it_findTargetS == SecondTargetDensity.end())
 		continue;
-	      double SecondTargetD = it_findTargetS->second;
-
+	      // HypDataProd HypData = *it_secondaryReaction;
+	      // //double SecondTargetD = it_findTargetS->second;
+	      // HypData.SecondTargetD = it_findTargetS->second;
+	      auto HypData = *it_secondaryReaction;
 	      //std::cout<<"case:"<<it_secondaryReaction->nameB<<" "<<it_secondaryReaction->nameT<<" CX :["<<it_secondaryReaction->cross_section<<" ]"<<std::endl;
 	      for(auto it_FBT = BeamTarget.cbegin(), it_FBT_end = BeamTarget.cend();it_FBT!= it_FBT_end;++it_FBT)
 		{
-		  auto it_findRejected = RejectedBeam.find(it_FBT->second.F);
-		  if(it_findRejected != RejectedBeam.end())
+		  auto it_findRejected = Reject.RejectedBeam.find(it_FBT->second.F);
+		  if(it_findRejected != Reject.RejectedBeam.end() && (it_FBT->second.BT !="Primary+Primary"))
 		    continue;
-		  //std::cout<<" -primary:"<<it_FBT->second.F<<" "<<it_FBT->first<<std::endl;
-		  if(it_secondaryReaction->nameB == it_FBT->second.F )
-		    {
-		      std::vector<int> tempIds(it_FBT->second.BT_ids);
-		    
+		  
+		  if(HypData.nameB == it_FBT->second.F )
+		    {	
 		      for(unsigned int idCmTarget = 0; idCmTarget< it_FBT->second.TargetCm.size();++idCmTarget)
 			{
-			  //std::cout<<" idCm :"<<idCmTarget<<std::endl;
-			  double tempT = it_FBT->second.TargetGramCm[idCmTarget];
-			  double tempI = it_FBT->second.ProdFrag[idCmTarget];
-			  if(tempI>Iminmax[1])
-			    tempI=Iminmax[1];
-			  double tempEpar[2] = {it_FBT->second.EnergyMean[idCmTarget],it_FBT->second.EnergySigma[idCmTarget]}; 
-
-			  double tempICX = tempI*4.*SecondTargetD*0.2*it_secondaryReaction->cross_section*6.02214129e-07*StrangenessProdNorm(tempEpar[0]); // 6.02409638554217e-07 = 1e-30/1.66e-24
-			  double tempC = it_FBT->second.ProdPara1[idCmTarget]+it_FBT->second.ProdPara2[idCmTarget]+it_FBT->second.ProdPara3[idCmTarget];
-			  //double tempE = (2.e3-tempEpar[0])*(2.e3-tempEpar[0])/tempEpar[1]/tempEpar[1];
-			  if(ICtype == "I-C")
-			    tempC = tempI - tempC;
-			  // if(it_FBT->second.BT_ids[0] == 14 && it_FBT->second.BT_ids[1] == 7 && it_FBT->second.BT_ids[2] == 9 && it_FBT->second.BT_ids[3] == 4 && it_FBT->second.BT_ids[4] == 12 && it_FBT->second.BT_ids[5] == 7 && TMath::Abs(it_FBT->second.TargetCm[idCmTarget]-5.)<1.e-3 && it_secondaryReaction->nameT=="C12")
-			  //   {
-			  //     std::cout<<"Test: "<<it_FBT->first<<std::endl;
-			  //     it_FBT->second.Print(5.);
-			  //     std::cout<<" Secondary: "<<it_secondaryReaction->nameB<<" "<<it_secondaryReaction->nameT<<" "<<tempICX<<std::endl;
-			  //   }
-
-			  //h_Internal->Fill(5.,tempICX/640.);
-
-			  if(tempICX<0.5)
+			  auto res_Min = minimizer.DoMin(alpha,beta,idCmTarget,it_FBT->second,HypData,histo,Reg);
+			  int error_res = std::get<0>(res_Min);
+			  if(error_res!=0)
 			    continue;
-
-			  double Brho = compute.Brho(it_FBT->second.BT_ids[5],it_FBT->second.BT_ids[4],tempEpar[0]); 
-			  h_Internal->Fill(14.,Brho/10.);
- 
-			  if(Brho>20.5)
-			    continue;
-			  //double tempE = 10*TMath::Gaus(2000,tempEpar[0],tempEpar[1]*5);
+			  double tempG = std::get<1>(res_Min);
 			  
-			  //h_Internal->Fill(11.,(tempT-Tmeansigma[0])/(Tmeansigma[1]));
-			  //h_Internal->Fill(12.,(tempI-Imeansigma[0])/(Imeansigma[1]));
-			  //h_Internal->Fill(13.,(tempEpar[0]-Energymeansigma[0])/(Energymeansigma[1]));
-			  
-			  
-			  std::vector<double> Input = {tempT,tempI,tempC,tempEpar[0]};
-			  //std::vector<double> Input2 = {0,tempICX};
-			  compute.Invariant(Input, RangeAll[type], type, h_Internal);
-			  //Invariant(Input2, RangeAll[type], type);
-			  
-			  // h_Internal->Fill(6.,(tempT-Tminmax[0])/(Tminmax[1]-Tminmax[0]));
-			  // h_Internal->Fill(7.,(tempI-Iminmax[0])/(Iminmax[1]-Iminmax[0]));
-			  // if(ICtype == "I-C")
-			  //   h_Internal->Fill(8.,(tempC-ICminma[0])/(ICminmax[1]-ICminmax[0]));
-			  // else
-			  //   h_Internal->Fill(8.,(tempC-Cminmax[0])/(Cminmax[1]-Cminmax[0]));
-			
-			
-			  // if(type==0)
-			  //   {
-			  //     tempT -= Tminmax[0];
-			  //     tempT /= Tminmax[1]-Tminmax[0];
-			    
-			  //     tempI -= Iminmax[0];
-			  //     tempI /= Iminmax[1]-Iminmax[0];
-			    
-			  //     if(ICtype == "I-C")
-			  //       {
-			  // 	tempC -= ICminmax[0];
-			  // 	tempC /= ICminmax[1]-ICminmax[0];
-			  //       }
-			  //     else
-			  //       {
-			  //       tempC -= Cminmax[0];
-			  //       tempC /= Cminmax[1]-Cminmax[0];
-			  //       }
-			  //   }
-			  // else
-			  //   {
-			  //     tempT -= Tmeansigma[0];
-			  //     tempT /= Tmeansigma[1];
-			    
-			  //     tempI -= Imeansigma[0];
-			  //     tempI /= Imeansigma[1];
-			    
-			  //     if(ICtype=="I-C")
-			  //       {
-			  // 	tempC -= ICmeansigma[0];
-			  // 	tempC /= ICmeansigma[1];
-			  //       }
-			  //     else
-			  //       {
-			  // 	tempC -= Cmeansigma[0];
-			  // 	tempC /= Cmeansigma[1];
-			  //       }
-			  //   }
-			  // double norm = TMath::Abs(alpha + beta - gamma);
-			  // double tempG = alpha*tempI + beta*tempT - gamma*tempC ;
-			  // tempG /= norm;
-			
-			  //double tempG = alpha*tempI - beta*tempT + (1-alpha+beta)*tempC ;
-			  std::vector<double> inPar(2);
-			  inPar[0] = alpha;
-			  inPar[1] = beta;
-
-			  std::vector<double> outPar(3);
-			  int res = compute.setPermutation(Mtype,inPar,outPar,NtypeComp);
-			  if(res==-1)
-			    return -1;
-			  if(res==-2)
-			    continue;
-			  //double tempG =  - 1./0.5808*1./0.54*1/1.10*outPar[0]*Input[0] + 1./320*1./0.32*outPar[1]*tempICX + outPar[2]*Input[3] ;//+ outPar[2]*Input[2] ;
-			  double tempG =  - 1./0.5808*1./0.54*1/1.10*1./0.92*outPar[0]*Input[0] + (1./320*1./0.32*1./0.14*1./1.02*1./0.98)*outPar[1]*tempICX + 1./0.98*outPar[2]*((Input[3]-0.46)/(1.-0.46)) + 1./1.02*0.5*Input[1];//+ outPar[2]*Input[2]
-			  //double tempG =  - 1./0.5808*outPar[0]*Input[0] + 1./0.56448*outPar[1]*Input[1] + outPar[2]*Input[3] + 1./5.4*Input2[1];
-		  
-			  // h_Internal->Fill(0.,tempT);
-			  // h_Internal->Fill(1.,tempI);
-			  // h_Internal->Fill(2.,tempC);
-			  // h_Internal->Fill(3.,tempEpar[0]);
-			  // h_Internal->Fill(4.,tempG);
-			  h_Internal->Fill(0.,1./0.5808*1./0.54*1./1.10*1./0.92*Input[0]);
-			  h_Internal->Fill(1.,1./1.02*Input[1]);
-			  h_Internal->Fill(2.,1./320.*1./0.32*1./0.14*1./1.02*1./0.98*tempICX);
-			  h_Internal->Fill(3.,1./0.98*(Input[3]-0.46)/(1.-0.46));
-
 			  if(tempG > max_G)
 			    {
-			      max_G = tempG;
-			      max_CmTarget = it_FBT->second.TargetCm[idCmTarget];//idCmTarget;
-			      max_nameIds = tempIds;
-			      maxIntensity = it_FBT->second.ProdFrag[idCmTarget];
-			      maxContamination = it_FBT->second.ProdPara1[idCmTarget]+it_FBT->second.ProdPara2[idCmTarget]+it_FBT->second.ProdPara3[idCmTarget];
-			      maxEnergyM = it_FBT->second.EnergyMean[idCmTarget];
-			      maxEnergyS = it_FBT->second.EnergySigma[idCmTarget];
-			      maxSurvival = it_FBT->second.Survival[idCmTarget];
-			      maxCrossSection = tempICX;//it_FBT->second.ProdFrag[idCmTarget]*it_secondaryReaction->cross_section;
+			      std::tie(std::ignore,max_G,max_CmTarget,max_nameIds,maxIntensity,maxContamination,maxEnergyM,maxEnergyS,maxSurvival,maxCrossSection)=res_Min;
+
+			      //max_G = tempG;
+			      //max_CmTarget = t1.TargetCm[idCmTarget];//idCmTarget;
+			      //max_nameIds = tempIds;
+			      //maxIntensity = t1.ProdFrag[idCmTarget];
+			      //maxContamination = t1.ProdPara1[idCmTarget]+t1.ProdPara2[idCmTarget]+t1.ProdPara3[idCmTarget];
+			      //maxEnergyM = t1.EnergyMean[idCmTarget];
+			      //maxEnergyS = t1.EnergySigma[idCmTarget];
+			      //maxSurvival = t1.Survival[idCmTarget];
+			      //maxCrossSection = tempICX;//t1.ProdFrag[idCmTarget]*it_secondaryReaction->cross_section;
 			    }
 			}
 		    }
@@ -577,7 +545,7 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
 	      dataMax tempMax = {i,j, alpha, beta, nameTemplateB, nameTemplateT, nameTemplateF, max_CmTarget, maxIntensity, maxContamination, maxEnergyM, maxEnergyS,maxSurvival, maxCrossSection};
 	      //maxMaxId[0] = i;
 	      //maxMaxId[1] = j;
-
+	      
 	      //maxMaxIdValue[0] = alpha;
 	      //maxMaxIdValue[1] = beta;
 	      if(maxMaxId.size()==0)
@@ -593,136 +561,164 @@ int AnalysisHyp(std::string namefileEpax, std::string namefileHyp, std::string H
 	      
 	      maxMax = max_G;
 	    }
-
 	  
-	  h_hist->Fill(alpha,beta,max_G);
-	  h_histNameBeamPrimary->Fill(alpha,beta,nameTemplateB);
-	  h_histNameBeamSecondary->Fill(alpha,beta,nameTemplateF);
-	  h_histCmTarget->Fill(alpha,beta,max_CmTarget);
-	  h_histNameTarget->Fill(alpha,beta,nameTemplateT);
-	  h_histEnergy->Fill(alpha,beta,TMath::FloorNint(maxEnergyM*10)*1e-4);
-	  h_histCrossSection->Fill(alpha,beta,TMath::FloorNint(maxCrossSection*10)*0.1);
-
-
+	  if(noHisto==false)
+	    {
+	      histo.h_hist->Fill(alpha,beta,max_G);
+	      histo.h_histNameBeamPrimary->Fill(alpha,beta,nameTemplateB);
+	      histo.h_histNameBeamSecondary->Fill(alpha,beta,nameTemplateF);
+	      histo.h_histCmTarget->Fill(alpha,beta,max_CmTarget);
+	      histo.h_histNameTarget->Fill(alpha,beta,nameTemplateT);
+	      histo.h_histEnergy->Fill(alpha,beta,TMath::FloorNint(maxEnergyM*10)*1e-4);
+	      histo.h_histCrossSection->Fill(alpha,beta,TMath::FloorNint(maxCrossSection*100)*0.01);
+	    }
+	  
 	}
     }
-  //std::cout<<" Max of the maxG : ["<<maxMaxId[0]<<", "<<maxMaxId[1]<<"] | alpha="<<maxMaxIdValue[0]<<" beta="<<maxMaxIdValue[1]<<std::endl;
-  std::cout<<" #max :"<<maxMaxId.size()<<std::endl;
-  std::vector<TMarker*> maxMarkers (maxMaxId.size(),0);
 
-  //for(unsigned int maxIndex = 0; maxIndex < maxMaxId.size(); ++maxIndex)
-  int maxIndex = 0;
-  for(auto dataId : maxMaxId)
+  if(noHisto==false)
     {
-      std::cout<<" Max ["<<maxIndex<<"] -> ("<<dataId.idI<<", "<<dataId.idJ<<") | alpha="<<dataId.alpha<<" beta="<<dataId.beta<<" "<<std::endl;
-      std::cout<<" +-> beamP:"<<dataId.beam<<" target:"<<dataId.target<<" IDcm:"<<dataId.cmtarget<<" Int:"<<dataId.intensity<<" | cont:"<<dataId.contamination<<std::endl;
-      std::cout<<" +-> beamS:"<<dataId.fragment<<" Energy:"<<dataId.energyMean<<" +- "<<dataId.energySigma<<" Survival:"<<dataId.survivalRate<<std::endl;
-      std::cout<<" +-> CX:"<<dataId.crossSectionHyp<<std::endl;
-      maxMarkers[maxIndex] = new TMarker(dataId.alpha,dataId.beta,30);
-      ++maxIndex;
+      //std::cout<<" Max of the maxG : ["<<maxMaxId[0]<<", "<<maxMaxId[1]<<"] | alpha="<<maxMaxIdValue[0]<<" beta="<<maxMaxIdValue[1]<<std::endl;
+      std::cout<<" #max :"<<maxMaxId.size()<<std::endl;
+      std::vector<TMarker*> maxMarkers (maxMaxId.size(),0);
+
+      //for(unsigned int maxIndex = 0; maxIndex < maxMaxId.size(); ++maxIndex)
+      int maxIndex = 0;
+      for(auto dataId : maxMaxId)
+	{
+	  std::cout<<" Max ["<<maxIndex<<"] -> ("<<dataId.idI<<", "<<dataId.idJ<<") | alpha="<<dataId.alpha<<" beta="<<dataId.beta<<" "<<std::endl;
+	  std::cout<<" +-> beamP:"<<dataId.beam<<" target:"<<dataId.target<<" IDcm:"<<dataId.cmtarget<<" Int:"<<dataId.intensity<<" | cont:"<<dataId.contamination<<std::endl;
+	  std::cout<<" +-> beamS:"<<dataId.fragment<<" Energy:"<<dataId.energyMean<<" +- "<<dataId.energySigma<<" Survival:"<<dataId.survivalRate<<std::endl;
+	  std::cout<<" +-> CX:"<<dataId.crossSectionHyp<<std::endl;
+	  maxMarkers[maxIndex] = new TMarker(dataId.alpha,dataId.beta,30);
+	  ++maxIndex;
+	}
+
+      std::string OptionDraw = NbinX > 30 || NbinY > 30 ? "colz" : "colz text";
+  
+      TCanvas* c1 = new TCanvas("Internal","Internal",500,500);
+      c1->cd();
+      histo.h_Internal->Draw("colz");
+      c1->Draw();
+      
+      TCanvas* c2 = new TCanvas("Cost","Cost",500,500);
+      //c2->Divide(2,2);
+      // c2->cd(1);
+      // h_hist->Project3D("xy")->Draw("colz");
+      // c2->cd(2);
+      // h_hist->Project3D("xz")->Draw("colz");
+      // c2->cd(3);
+      // h_hist->Project3D("yz")->Draw("colz");
+      //c2->cd(4);
+      histo.h_hist->Draw("colz");
+      for(unsigned int maxIndex = 0; maxIndex < maxMarkers.size(); ++maxIndex)
+	maxMarkers[maxIndex]->Draw("same");
+      c2->Draw();
+  
+
+      TCanvas* c3 = new TCanvas("NameBeam","NameBeam",500,500);
+      //c3->Divide(2,2);
+      // c3->cd(1);
+      // h_histNameBeam->Project3D("xy")->Draw("colz");  
+      // c3->cd(2);
+      // h_histNameBeam->Project3D("xz")->Draw("colz");
+      // c3->cd(3);
+      // h_histNameBeam->Project3D("yz")->Draw("colz");
+      //c3->cd(4);
+      histo.h_histNameBeamPrimary->Draw(OptionDraw.c_str());
+      for(unsigned int maxIndex = 0; maxIndex < maxMarkers.size(); ++maxIndex)
+	maxMarkers[maxIndex]->Draw("same");
+
+      c3->Draw();
+
+      TCanvas* c3_1 = new TCanvas("NameTarget","NameTarget",500,500);
+      //c3_1->Divide(2,2);
+      // c3_1->cd(1);
+      // h_histNameTarget->Project3D("xy")->Draw("colz");
+      // c3_1->cd(2);
+      // h_histNameTarget->Project3D("xz")->Draw("colz");
+      // c3_1->cd(3);
+      // h_histNameTarget->Project3D("yz")->Draw("colz");
+      //c3_1->cd(4);
+      histo.h_histNameTarget->Draw(OptionDraw.c_str());
+      for(unsigned int maxIndex = 0; maxIndex < maxMarkers.size(); ++maxIndex)
+	maxMarkers[maxIndex]->Draw("same");
+
+      c3_1->Draw();
+
+      TCanvas* c3_2 = new TCanvas("NameBeam2","NameBeam2",500,500);
+      //c3->Divide(2,2);
+      // c3->cd(1);
+      // h_histNameBeam->Project3D("xy")->Draw("colz");  
+      // c3->cd(2);
+      // h_histNameBeam->Project3D("xz")->Draw("colz");
+      // c3->cd(3);
+      // h_histNameBeam->Project3D("yz")->Draw("colz");
+      //c3->cd(4);
+      histo.h_histNameBeamSecondary->Draw(OptionDraw.c_str());
+      for(unsigned int maxIndex = 0; maxIndex < maxMarkers.size(); ++maxIndex)
+	maxMarkers[maxIndex]->Draw("same");
+
+      c3_2->Draw();
+
+      TCanvas* c4 = new TCanvas("Thickness","Thickness",500,500);
+      //c4->Divide(2,2);
+      //c4->cd(1);
+      // h_histCmTarget->Project3D("xy")->Draw("colz");
+      // c4->cd(2);
+      // h_histCmTarget->Project3D("xz")->Draw("colz");
+      // c4->cd(3);
+      // h_histCmTarget->Project3D("yz")->Draw("colz");
+      //c4->cd(4);
+      histo.h_histCmTarget->Draw(OptionDraw.c_str());
+      for(unsigned int maxIndex = 0; maxIndex < maxMarkers.size(); ++maxIndex)
+	maxMarkers[maxIndex]->Draw("same");
+
+      c4->Draw();
+
+      TCanvas* c5 = new TCanvas("CX","CX",500,500);
+      //c3->Divide(2,2);
+      // c3->cd(1);
+      // h_histNameBeam->Project3D("xy")->Draw("colz");  
+      // c3->cd(2);
+      // h_histNameBeam->Project3D("xz")->Draw("colz");
+      // c3->cd(3);
+      // h_histNameBeam->Project3D("yz")->Draw("colz");
+      //c3->cd(4);
+      histo.h_histCrossSection->Draw(OptionDraw.c_str());
+      for(unsigned int maxIndex = 0; maxIndex < maxMarkers.size(); ++maxIndex)
+	maxMarkers[maxIndex]->Draw("same");
+
+      c5->Draw();
+      
+      TCanvas* c6 = new TCanvas("Energy","Energy",500,500);
+      //c3->Divide(2,2);
+      // c3->cd(1);
+      // h_histNameBeam->Project3D("xy")->Draw("colz");  
+      // c3->cd(2);
+      // h_histNameBeam->Project3D("xz")->Draw("colz");
+      // c3->cd(3);
+      // h_histNameBeam->Project3D("yz")->Draw("colz");
+      //c3->cd(4);
+      histo.h_histEnergy->Draw(OptionDraw.c_str());
+      for(unsigned int maxIndex = 0; maxIndex < maxMarkers.size(); ++maxIndex)
+	maxMarkers[maxIndex]->Draw("same");
+
+      c6->Draw();
     }
 
-  std::string OptionDraw = NbinX > 30 || NbinY > 30 ? "colz" : "colz text";
-  
-  TCanvas* c1 = new TCanvas("Internal","Internal",500,500);
-  c1->cd();
-  h_Internal->Draw("colz");
-
-  TCanvas* c2 = new TCanvas("Cost","Cost",500,500);
-  //c2->Divide(2,2);
-  // c2->cd(1);
-  // h_hist->Project3D("xy")->Draw("colz");
-  // c2->cd(2);
-  // h_hist->Project3D("xz")->Draw("colz");
-  // c2->cd(3);
-  // h_hist->Project3D("yz")->Draw("colz");
-  //c2->cd(4);
-  h_hist->Draw("colz");
-  for(unsigned int maxIndex = 0; maxIndex < maxMarkers.size(); ++maxIndex)
-    maxMarkers[maxIndex]->Draw("same");
-  
-
-  TCanvas* c3 = new TCanvas("NameBeam","NameBeam",500,500);
-  //c3->Divide(2,2);
-  // c3->cd(1);
-  // h_histNameBeam->Project3D("xy")->Draw("colz");  
-  // c3->cd(2);
-  // h_histNameBeam->Project3D("xz")->Draw("colz");
-  // c3->cd(3);
-  // h_histNameBeam->Project3D("yz")->Draw("colz");
-  //c3->cd(4);
-  h_histNameBeamPrimary->Draw(OptionDraw.c_str());
-  for(unsigned int maxIndex = 0; maxIndex < maxMarkers.size(); ++maxIndex)
-    maxMarkers[maxIndex]->Draw("same");
-
-  TCanvas* c3_1 = new TCanvas("NameTarget","NameTarget",500,500);
-  //c3_1->Divide(2,2);
-  // c3_1->cd(1);
-  // h_histNameTarget->Project3D("xy")->Draw("colz");
-  // c3_1->cd(2);
-  // h_histNameTarget->Project3D("xz")->Draw("colz");
-  // c3_1->cd(3);
-  // h_histNameTarget->Project3D("yz")->Draw("colz");
-  //c3_1->cd(4);
-  h_histNameTarget->Draw(OptionDraw.c_str());
-  for(unsigned int maxIndex = 0; maxIndex < maxMarkers.size(); ++maxIndex)
-    maxMarkers[maxIndex]->Draw("same");
-
-  TCanvas* c3_2 = new TCanvas("NameBeam2","NameBeam2",500,500);
-  //c3->Divide(2,2);
-  // c3->cd(1);
-  // h_histNameBeam->Project3D("xy")->Draw("colz");  
-  // c3->cd(2);
-  // h_histNameBeam->Project3D("xz")->Draw("colz");
-  // c3->cd(3);
-  // h_histNameBeam->Project3D("yz")->Draw("colz");
-  //c3->cd(4);
-  h_histNameBeamSecondary->Draw(OptionDraw.c_str());
-  for(unsigned int maxIndex = 0; maxIndex < maxMarkers.size(); ++maxIndex)
-    maxMarkers[maxIndex]->Draw("same");
-
-  TCanvas* c4 = new TCanvas("Thickness","Thickness",500,500);
-  //c4->Divide(2,2);
-  //c4->cd(1);
-  // h_histCmTarget->Project3D("xy")->Draw("colz");
-  // c4->cd(2);
-  // h_histCmTarget->Project3D("xz")->Draw("colz");
-  // c4->cd(3);
-  // h_histCmTarget->Project3D("yz")->Draw("colz");
-  //c4->cd(4);
-  h_histCmTarget->Draw(OptionDraw.c_str());
-  for(unsigned int maxIndex = 0; maxIndex < maxMarkers.size(); ++maxIndex)
-    maxMarkers[maxIndex]->Draw("same");
-
-  TCanvas* c5 = new TCanvas("CX","CX",500,500);
-  //c3->Divide(2,2);
-  // c3->cd(1);
-  // h_histNameBeam->Project3D("xy")->Draw("colz");  
-  // c3->cd(2);
-  // h_histNameBeam->Project3D("xz")->Draw("colz");
-  // c3->cd(3);
-  // h_histNameBeam->Project3D("yz")->Draw("colz");
-  //c3->cd(4);
-  h_histCrossSection->Draw(OptionDraw.c_str());
-  for(unsigned int maxIndex = 0; maxIndex < maxMarkers.size(); ++maxIndex)
-    maxMarkers[maxIndex]->Draw("same");
-
-  TCanvas* c6 = new TCanvas("Energy","Energy",500,500);
-  //c3->Divide(2,2);
-  // c3->cd(1);
-  // h_histNameBeam->Project3D("xy")->Draw("colz");  
-  // c3->cd(2);
-  // h_histNameBeam->Project3D("xz")->Draw("colz");
-  // c3->cd(3);
-  // h_histNameBeam->Project3D("yz")->Draw("colz");
-  //c3->cd(4);
-  h_histEnergy->Draw(OptionDraw.c_str());
-  for(unsigned int maxIndex = 0; maxIndex < maxMarkers.size(); ++maxIndex)
-    maxMarkers[maxIndex]->Draw("same");
-
-
-
-  return 0;
+  // int maxIndex = 0;
+  // for(auto dataId : maxMaxId)
+  //   {
+  //     std::cout<<" Max ["<<maxIndex<<"] -> ("<<dataId.idI<<", "<<dataId.idJ<<") | alpha="<<dataId.alpha<<" beta="<<dataId.beta<<" "<<std::endl;
+  //     std::cout<<" +-> beamP:"<<dataId.beam<<" target:"<<dataId.target<<" IDcm:"<<dataId.cmtarget<<" Int:"<<dataId.intensity<<" | cont:"<<dataId.contamination<<std::endl;
+  //     std::cout<<" +-> beamS:"<<dataId.fragment<<" Energy:"<<dataId.energyMean<<" +- "<<dataId.energySigma<<" Survival:"<<dataId.survivalRate<<std::endl;
+  //     std::cout<<" +-> CX:"<<dataId.crossSectionHyp<<std::endl;
+  //     maxMarkers[maxIndex] = new TMarker(dataId.alpha,dataId.beta,30);
+  //     ++maxIndex;
+  //   }
+    
+  return std::make_tuple(maxMaxId.size(),maxMaxId.begin()->beam,maxMaxId.begin()->target,maxMaxId.begin()->cmtarget,maxMaxId.begin()->intensity,maxMaxId.begin()->fragment,maxMaxId.begin()->energyMean,maxMaxId.begin()->crossSectionHyp);
 }
 
 
@@ -864,7 +860,7 @@ int AnalysisHypStable(std::string namefileEpax, std::string namefileHyp, std::st
   
   
   std::ifstream ifsHyp (namefileHyp.c_str());
-  std::set<nameBTtuple,CompBTTuple> hyp_prodAll;
+  std::set<HypDataProd,CompHypDataProd> hyp_prodAll;
 
   std::getline(ifsHyp,temp_line);
   double max_CX = -1 ;
@@ -892,7 +888,7 @@ int AnalysisHypStable(std::string namefileEpax, std::string namefileHyp, std::st
 	      std::cout<<"E> no + ! "<<id<<" "<<BT<<" "<<hyp<<std::endl;
 	      return -1;
 	    }
-	  nameBTtuple nameBT;
+	  HypDataProd nameBT;
 	  nameBT.nameB=BT.substr(0,foundPlus);
 	  nameBT.nameT=BT.substr(foundPlus+1);
 	  nameBT.cross_section = CX1;
@@ -917,7 +913,7 @@ int AnalysisHypStable(std::string namefileEpax, std::string namefileHyp, std::st
 	}
     }
 
-  auto Pred = [&] (const nameBTtuple& nameBT) -> bool
+  auto Pred = [&] (const HypDataProd& nameBT) -> bool
 	       {
 		 auto isFound = FragAvailable.find(nameBT.nameB);
 		 if(isFound != FragAvailable.end())
@@ -929,7 +925,7 @@ int AnalysisHypStable(std::string namefileEpax, std::string namefileHyp, std::st
 		   }
 	       };
   
-  std::set<nameBTtuple,CompBTTuple> hyp_prod;
+  std::set<HypDataProd,CompHypDataProd> hyp_prod;
   for(auto item : hyp_prodAll)
     if(Pred(item))
       {
@@ -963,17 +959,163 @@ int AnalysisHypStable(std::string namefileEpax, std::string namefileHyp, std::st
     }
   std::cout<<std::endl;
 
-
-  for(std::map<std::string, tuple_graph>::const_iterator it_FBT = BeamTarget.begin(), it_FBT_end = BeamTarget.end();it_FBT!= it_FBT_end;++it_FBT)
+  Interpole doInterpoling;
+  for(std::map<std::string, tuple_graph>::iterator it_FBT = BeamTarget.begin(), it_FBT_end = BeamTarget.end();it_FBT!= it_FBT_end;++it_FBT)
     {
+      
+      
       if(it_FBT->second.F == "C11") 
 	{
 	  std::cout<<"*Entry :"<<it_FBT->first<<std::endl;
 	  if(/*it_FBT->second.BT_ids[0] == 14 && it_FBT->second.BT_ids[1] == 7 &&*/ it_FBT->second.BT_ids[2] == 9 && it_FBT->second.BT_ids[3] == 4)
-	    it_FBT->second.Print();
+	    {
+	      //auto temp = doInterpoling.Inter(it_FBT->second);
+	      //temp.Print();
+	      it_FBT->second.Print();
+	    }
 	}
     }
-  
-  
 
+  std::cout<<" TEST :"<<std::endl;
+  auto it_test = BeamTarget.find("C11Si30Be9");
+  auto it_test2 = doInterpoling.Inter(it_test->second);
+  it_test2.Print();
+
+  TCanvas* c1= new TCanvas("c1","c1",500,500);
+  c1->cd();
+  Double_t temp1x [it_test->second.TargetCm.size()];
+  Double_t temp1y [it_test->second.TargetCm.size()];
+  int tempId = 0;
+  for(auto idx : sort_indexes(it_test->second.TargetCm) )
+    {
+      temp1x[tempId] = it_test->second.TargetCm[idx]; 
+      temp1y[tempId] = it_test->second.Survival[idx];
+      ++tempId;
+    }
+  Double_t temp2x [it_test2.TargetCm.size()];
+  Double_t temp2y [it_test2.TargetCm.size()];
+  tempId = 0;
+  for(auto idx : sort_indexes(it_test2.TargetCm) )
+    {
+      temp2x[tempId] = it_test2.TargetCm[idx]; 
+      temp2y[tempId] = it_test2.Survival[idx];
+      ++tempId;
+    }
+
+  TGraph* graph1 = new TGraph(it_test->second.TargetCm.size(),temp1x,temp1y); 
+  TGraph* graph2 = new TGraph(it_test2.TargetCm.size(),temp2x,temp2y); 
+
+  TMultiGraph* GraphM = new TMultiGraph();
+  graph1->SetMarkerColor(1);
+  graph1->SetMarkerStyle(4);
+  GraphM->Add(graph1,"pl");
+  graph2->SetMarkerColor(2);
+  graph2->SetMarkerStyle(5);
+  GraphM->Add(graph2,"p");
+
+  GraphM->Draw("a*");
+  
+  return 0;
+
+}
+
+
+
+int AnalysisAllHyp(std::string namefileEpax, std::string namefileHyp, int style = 0)
+{
+  
+  std::ifstream ifsHyp (namefileHyp.c_str());
+  std::set<std::string> hypAll;
+
+  std::string temp_line;
+  while(std::getline(ifsHyp,temp_line))
+    {
+      std::stringstream stream(temp_line);
+      std::string hyp;
+      stream >> hyp ;
+      if(hyp=="#")
+	continue;
+      hypAll.emplace(hyp);
+    }
+  std::cout<<"Hypernuclei :";
+  for(auto hyp : hypAll)
+    std::cout<<" "<<hyp;
+  std::cout<<std::endl;
+
+  bool NoHist = true;
+  bool WithStable = true;
+  
+  std::vector<std::string> results_printout;
+  const std::string Atom("0123456789");
+  for(auto& Hyp : hypAll)
+    {
+      size_t Ncand; 
+      double nameB;
+      double nameT;
+      double nameF;
+      double CmTarget;
+      double Intensity;
+      double Energy;
+      double crossSectionHyp;
+      std::tie(Ncand,nameB,nameT,CmTarget,Intensity,nameF,Energy,crossSectionHyp) = AnalysisHyp(namefileEpax,namefileHyp,Hyp,0,"I-C","AB A B",0,0,-1,20,true,WithStable,NoHist);
+      if(Ncand>0)
+	{
+	  int Ap = nameB/100;
+	  int Zp = static_cast<int>(nameB)%100;
+	  int At = nameT/100;
+	  int Zt = static_cast<int>(nameT)%100;
+	  int Af = nameF/100;
+	  int Zf = static_cast<int>(nameF)%100;
+
+	  std::string SnameF = ElName2[Zf];
+	  SnameF+= std::to_string(Af);
+	  std::string SnameP = ElName2[Zp];
+	  SnameP+=std::to_string(Ap);
+	  TString SnameT = ElName2[Zt];
+	  SnameT+=std::to_string(At);
+	  if(style == 0)
+	    {
+	      std::cout<<Hyp<<" ["<< Ncand<<"] :"<<SnameP<<"+"<<SnameT<<" with "<<CmTarget<<" cm"<<" and "<<Intensity<<"/s"<<" -> "<<SnameF<<" @ "<<Energy<<" CX="<<crossSectionHyp<<std::endl; 
+	    }
+	  else if(style == 1)
+	    {
+	      std::stringstream out;
+	      auto it_Namefound = Hyp.find_first_of(Atom);
+	      auto it_Namefound_L = Hyp.find_last_of("L");
+	      if(it_Namefound != std::string::npos)
+		{
+		  std::string tempZ = Hyp.substr(0,it_Namefound);
+		  std::string tempA = Hyp.substr(it_Namefound,it_Namefound_L);
+		  
+		  
+		  out <<"^{"<<tempA<<"}_/Lambda"<<tempZ<<" & ^{"<<Ap<<"}"<<ElName2[Zp]<<"+ ^{"<<At<<"}"<<ElName2[Zt]<<" & "<<CmTarget<<" & ^{"<<Af<<"}"<<ElName2[Zf]<<" & "<<Energy<<" & "<<Intensity<<" & "<<crossSectionHyp<<" \\ ";  
+		  results_printout.push_back(out.str());
+		}
+	    }
+      
+	}
+    }
+
+  if(style==1)
+    {
+      for(auto& res : results_printout)
+	std::cout<<res<<std::endl;
+    }
+  
+  // TCanvas* c6 = new TCanvas("Energy","Energy",500,500);
+  // //c3->Divide(2,2);
+  // // c3->cd(1);
+  // // h_histNameBeam->Project3D("xy")->Draw("colz");  
+  // // c3->cd(2);
+  // // h_histNameBeam->Project3D("xz")->Draw("colz");
+  // // c3->cd(3);
+  // // h_histNameBeam->Project3D("yz")->Draw("colz");
+  // //c3->cd(4);
+  // histo.h_histEnergy->Draw(OptionDraw.c_str());
+  // for(unsigned int maxIndex = 0; maxIndex < maxMarkers.size(); ++maxIndex)
+  //   maxMarkers[maxIndex]->Draw("same");
+
+
+
+  return 0;
 }
