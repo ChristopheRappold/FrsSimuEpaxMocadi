@@ -77,10 +77,10 @@ close $fileheader;
 
 ## -> Parse the header file to set the fragment of interest $Af $Zf
 
-open my $fileheader, '<', $ARGV[0] or die "error opening $ARGV[0]: $! \n";
+open my $fileheader2, '<', $ARGV[0] or die "error opening $ARGV[0]: $! \n";
 my $Af =0;
 my $Zf =0;
-while(my $lineheader=<$fileheader>)
+while(my $lineheader=<$fileheader2>)
 {
     #print $lineheader;
 
@@ -95,7 +95,7 @@ if($Af==0 or $Zf==0)
 {
     die "No valid fragment A=$Af Z=$Zf !\n";
 }
-close $fileheader;
+close $fileheader2;
 print "fragment :A".$Af."Z".$Zf."\n";
 
 ## -> 1) Open the second file of the mocadi setup : Matrices of the magnets and SAVE statements at the wanted place
