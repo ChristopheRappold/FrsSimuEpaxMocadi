@@ -2,6 +2,7 @@
 #include "TTree.h"
 #include "TString.h"
 #include "TRandom3.h"
+#include <cassert>
 
 #include "TTreeReader.h"
 #include "TTreeReaderValue.h"
@@ -27,7 +28,7 @@ struct DataIon{
   DataKinematics finalS;
 };
 
-int GEnTMVATree(TString name_in,TString name_out, Long64_t N_Split, Long64_t Nb_ions, int lastN)
+int GenTMVATree(TString name_in,TString name_out)//, Long64_t N_Split, Long64_t Nb_ions, int lastN)
 {
 
 
@@ -54,43 +55,52 @@ int GEnTMVATree(TString name_in,TString name_out, Long64_t N_Split, Long64_t Nb_
   TTreeReaderArray<Float_t> Tof_In(reader, "Tof");
   TTreeReaderArray<Float_t> Brho_In(reader, "Brho");
 
-  const auto Entries_In = reader.GetEntries(true);
+  const Long64_t Entries_In = reader.GetEntries(true);
 
   std::cout<<" Entries Input:"<<Entries_In<<std::endl;
+
+  reader.Next();
+  float mass_test = Mass_In[0];
+  float z_test = Z_In[0];
   
-  static_assert(Entries_In = N_Split*Nb_ions);
+  //std::vector<Long64_t> N_Splits;
+  
+  Long64_t nSplit_test = 1;
+  int N_FRSstage = 0;
+  while(reader.Next())
+    {
+      if(N_FRSstage<*N_In)
+	N_FRSstage = *N_In;
+      if(TMath::Abs(mass_test-Mass_In[0])<1e-1 && TMath::Abs(z_test-Z_In[0])<1e-1)
+	++nSplit_test;
+      // else
+      // 	{
+      // 	  N_Splits.emplace_back(nSplit_test);
+      // 	  nSplit_test = 1;
+      // 	  ++Nion_test;
+      // 	  mass_test = Mass_In[0];
+      // 	  z_test = Z_In[0];
+      // 	}
+    }
+  
+  int Nion_test = Entries_In / nSplit_test;
+  
+   //assert(N_Splits.size() == Nion_test);
+  
+  Long64_t N_Split = nSplit_test;
+  // for(auto NS : N_Splits)
+  //   if(NS != N_Split)
+  //     {
+  // 	std::cout<<"E> N_Split are different !"<<NS<<" "<<N_Split<<"\n";
+  // 	return -1;
+  //     }
+  Long64_t Nb_ions = Nion_test; 
+  int lastN = N_FRSstage-1;
+  
+  assert(Entries_In == N_Split*Nb_ions);//, "Total Entries is not multiple of N_Split and Nb_ions");
   
   //std::vector< std::vector< DataIon> > Inputs ( N_Split, std::vector<DataIon>(Nb_ions));
-
-  while(reader.Next()) 
-    {
-      auto iEntry = reader.GetCurrentEntry();
-      if(static_cast<int>(static_cast<double>(iEntry)/static_cast<double>(Entries)*10)==timing)
-	{
-	  std::cout<<"Processing :"<<timing*10<<"% \n";
-	  ++timing;
-	}
-
-      // int Nion = iEntry / N_Split;
-      // int Nevent = iEntry % N_Split;
-
-      // if(N-1 == lastN)
-      // 	{
-      // 	  Inputs[Nevent][Nion] = {Nion,
-      // 				  {N.begin(),X.begin(),A.begin(),Y.begin(),B.begin(),Energy.begin(),Time.begin(),Mass.begin(),Z.begin(),Tof.begin(),Brho.begin()},
-      // 				  {N.last(),X.last(),A.last(),Y.last(),B.last(),Energy.last(),Time.last(),Mass.last(),Z.last(),Tof.last(),Brho.last()} };
-
-	  
-      // 	}
-      // else 
-      // 	  Inputs[Nevent][Nion].ion =-1;
-
-
-    }
-
-
   
-
   
   TFile  *fFile = new TFile(name_out,"RECREATE");  
   TTree  *fDataT;// = new TTree("MonteCarlo", "Filtered Monte Carlo Events");
