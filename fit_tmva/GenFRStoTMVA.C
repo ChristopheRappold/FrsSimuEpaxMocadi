@@ -152,13 +152,13 @@ int GEnTMVATree(TString name_in,TString name_out, Long64_t N_Split, Long64_t Nb_
 	  if(status == 0)
 	    {
 	      
-	      if(N-1!=Nlast)
+	      if((*N_In)-1!=lastN)
 		continue;
-	      else if(N-1 == Nlast)
+	      else if((*N_In)-1 == lastN)
 		{
 		  //Ions.emplace_back({k,
 		  //	{N.[0],X.[0],A.[0],Y.[0],B.[0],Energy.[0],Time.[0],Mass.[0],Z.[0],Tof.[0],Brho.[0]},
-		  //	  {N.[Nlast],X.[Nlast],A.[Nlast],Y.[Nlast],B.[Nlast],Energy.[Nlast],Time.[Nlast],Mass.[Nlast],Z.[Nlast],Tof.[Nlast],Brho.[Nlast]}	});
+		  //	  {N.[lastN],X.[lastN],A.[lastN],Y.[lastN],B.[lastN],Energy.[lastN],Time.[lastN],Mass.[lastN],Z.[lastN],Tof.[lastN],Brho.[lastN]}	});
 
 		  Nion = k;
 		  x_i = X_In[0];
@@ -170,14 +170,14 @@ int GEnTMVATree(TString name_in,TString name_out, Long64_t N_Split, Long64_t Nb_
 		  Tof_i = Tof_In[0];
 		  Brho_i =  Brho_In[0];
 
-		  x_f = X_In[Nlast];
-		  a_f = A_In[Nlast];
-		  y_f = Y_In[Nlast];
-		  b_f = B_In[Nlast];
-		  Energy_f = Energy_In[Nlast];
-		  Time_f = Time_In[Nlast];
-		  Tof_f = Tof_In[Nlast];
-		  Brho_f =  Brho_In[Nlast];
+		  x_f = X_In[lastN];
+		  a_f = A_In[lastN];
+		  y_f = Y_In[lastN];
+		  b_f = B_In[lastN];
+		  Energy_f = Energy_In[lastN];
+		  Time_f = Time_In[lastN];
+		  Tof_f = Tof_In[lastN];
+		  Brho_f =  Brho_In[lastN];
 
 
 		  Mass = Mass_In[0];
