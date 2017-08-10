@@ -15,7 +15,7 @@
 #include <map>
 #include <string>
 
-void SimuPhaseSpace(int type,int TwoOrThree = 0, double rapidity_center=0.0) 
+void SimuPhaseSpace(int type,int TwoOrThree = 0, double rapidity_center=0.0, double scaling =0.02) 
 {
   TRandom3* rand = new TRandom3;
 
@@ -23,12 +23,21 @@ void SimuPhaseSpace(int type,int TwoOrThree = 0, double rapidity_center=0.0)
   MapMassMother.insert(std::pair<int,double>(0,2.9937));
   MapMassMother.insert(std::pair<int,double>(1,2.99114));
   MapMassMother.insert(std::pair<int,double>(2,3.9225));
+  MapMassMother.insert(std::pair<int,double>(3,11.35871));
+  MapMassMother.insert(std::pair<int,double>(4,1.116));
+  MapMassMother.insert(std::pair<int,double>(5,1.19744));
+  MapMassMother.insert(std::pair<int,double>(6,1.3217));
 
   std::map<int,double> MapChargeDaugthers;
   MapChargeDaugthers.insert(std::pair<int,double>(0,1.));
   MapChargeDaugthers.insert(std::pair<int,double>(1,2.));
   MapChargeDaugthers.insert(std::pair<int,double>(2,2.));
-
+  MapChargeDaugthers.insert(std::pair<int,double>(3,7.));
+  MapChargeDaugthers.insert(std::pair<int,double>(4,1.));
+  MapChargeDaugthers.insert(std::pair<int,double>(5,1.));
+  MapChargeDaugthers.insert(std::pair<int,double>(6,1.));
+  
+  
   std::map<int,std::vector<double> > MapMassDaugthers;
   std::vector<double> temp_vec(2);
   
@@ -44,19 +53,53 @@ void SimuPhaseSpace(int type,int TwoOrThree = 0, double rapidity_center=0.0)
   temp_vec[1] = 3.727417;
   MapMassDaugthers.insert(std::pair<int,std::vector<double> >(2,temp_vec));
 			  
+  temp_vec[0] = 0.1396;
+  temp_vec[1] = 11.1917;
+  MapMassDaugthers.insert(std::pair<int,std::vector<double> >(3,temp_vec));
+
+  temp_vec[0] = 0.1396;
+  temp_vec[1] = 0.938;
+  MapMassDaugthers.insert(std::pair<int,std::vector<double> >(4,temp_vec));
+
+  temp_vec[0] = 0.1396;
+  temp_vec[1] = 0.939565;
+  MapMassDaugthers.insert(std::pair<int,std::vector<double> >(5,temp_vec));
+
+  temp_vec[0] = 0.1396;
+  temp_vec[1] = 1.1157;
+  MapMassDaugthers.insert(std::pair<int,std::vector<double> >(6,temp_vec));
+
   std::map<int,std::vector<double> > MapInvMass;
   temp_vec[0] = TwoOrThree == 1 ? 1.5 : 2.7;
   temp_vec[1] = TwoOrThree == 1 ? 2.5 : 3.2;
   MapInvMass.insert(std::pair<int,std::vector<double> >(0,temp_vec));
+
   temp_vec[0] = 2.7;
   temp_vec[1] = 3.2;
   MapInvMass.insert(std::pair<int,std::vector<double> >(1,temp_vec));
+
   temp_vec[0] = 3.7;
   temp_vec[1] = 4.2;
   MapInvMass.insert(std::pair<int,std::vector<double> >(2,temp_vec));
 
-  double KinematicsMother[3][2] = { {5.833,0.2323},{8.497,0.3138},{11.155,0.33704}};
-  double Brho_range [3][2] = { {12.,22.},{7.,17},{12.,22.}};
+  temp_vec[0] = 11.2;
+  temp_vec[1] = 11.7;
+  MapInvMass.insert(std::pair<int,std::vector<double> >(3,temp_vec));
+
+  temp_vec[0] = 1.0;
+  temp_vec[1] = 1.5;
+  MapInvMass.insert(std::pair<int,std::vector<double> >(4,temp_vec));
+
+  temp_vec[0] = 1.0;
+  temp_vec[1] = 1.5;
+  MapInvMass.insert(std::pair<int,std::vector<double> >(5,temp_vec));
+
+  temp_vec[0] = 1.2;
+  temp_vec[1] = 1.7;
+  MapInvMass.insert(std::pair<int,std::vector<double> >(6,temp_vec));
+
+  double KinematicsMother[7][2] = { {5.833,0.2323},{8.497,0.3138},{11.155,0.33704},{33.3526,1.00},{5.51,0.0000020},{/*6.62*/0.,0.00000020},{7.31,0.00000020}};
+  double Brho_range [7][2] = { {12.,22.},{7.,17},{12.,22.},{10,20},{2,20},{2,20},{2,20}};
   if(TwoOrThree==0)
     {
       Brho_range[0][0] = 20;
@@ -81,10 +124,18 @@ void SimuPhaseSpace(int type,int TwoOrThree = 0, double rapidity_center=0.0)
   TH2F* h_PzFr_InvMass = new TH2F("PzFrInv","PzFrInv",1000,Brho_range[type][0],Brho_range[type][1],10000,Invmass_MinMax[0],Invmass_MinMax[1]);
   TH2F* h_PzFr_InvMassMix = new TH2F("PzFrInvMix","PzFrInvMix",1000,Brho_range[type][0],Brho_range[type][1],10000,Invmass_MinMax[0],Invmass_MinMax[1]);
 
+  TH2F* h_MomThetaPi = new TH2F("MomThetaPi","MomThetaPi",360,0,180,300,0,0.3);
+  TH2F* h_MomThetaFr = new TH2F("MomThetaFr","MomThetaFr",360,0,180,1800,0,3*18);
+  
+  TH2F* h_PolarPolar = new TH2F("PolarPolar","PolarPolar",500,0,180,500,0,180);
+  TH2F* h_MomZThetaPi = new TH2F("MomZThetaPi","MomZThetaPi",360,0,180,300,-3,3);
+  TH2F* h_MomZThetaFr = new TH2F("MomZThetaFr","MomZThetaFr",360,0,180,1800,-3,3*18);
+
   THStack* h_all = new THStack("h_all","h_all");
   THStack* h_all2D = new THStack("h_all2D","h_all2D");
 
   TH2F* h_phasespace = new TH2F("h_phasespace","h_phasespace",100,0,4,100,0,1);
+  TH2F* h_momAtrest = new TH2F("h_momAtrest","h_momAtrest",10,0,1000,0,0.2);
   
   std::vector<TLorentzVector> mom_pi;
   std::vector<TLorentzVector> mom_B;
@@ -109,9 +160,9 @@ void SimuPhaseSpace(int type,int TwoOrThree = 0, double rapidity_center=0.0)
       double u = 0.931494061;
       double mass  = mass_mother;//2.9937;//7*u+27.87e-3 + 1.11568;
   
-      double pt = rand->Uniform(0.5);
+      double pt = rand->Uniform(0.001);
       double phi = rand->Uniform(1.);
-      double fractor_pW = rand->Gaus(1,0.05);
+      double fractor_pW = 1.0;//rand->Gaus(1,0.05);
       phi *= 2*TMath::Pi();
       phi -= TMath::Pi();
       pW *= fractor_pW;
@@ -200,8 +251,8 @@ void SimuPhaseSpace(int type,int TwoOrThree = 0, double rapidity_center=0.0)
 	}
      
 
-      TLorentzVector temp_p1;
-      TLorentzVector temp_p2;
+      TLorentzVector temp_p1, temp_p1_1, temp_p1_2, temp_p1_3;
+      TLorentzVector temp_p2, temp_p2_1, temp_p2_2, temp_p2_3;
       double factor = rand->Gaus(1,1.e-2 );//0.02);
       double factor2 = rand->Gaus(1,1.e-3);//0.017);
       TVector3 temp_vec(p[0]->Vect());
@@ -212,9 +263,58 @@ void SimuPhaseSpace(int type,int TwoOrThree = 0, double rapidity_center=0.0)
       mom_pi.push_back(temp_p1);
       mom_B.push_back(temp_p2);
 	  
-      TLorentzVector PP;
+      TLorentzVector PP, PP_1, PP_2, PP_3;
       PP=temp_p1+temp_p2;
 
+      TLorentzVector temp_p1_org, temp_p2_org,PP_org;
+      temp_p1_org.SetXYZM(p[0]->X(),p[0]->Y(),p[0]->Z(),masses[0]);
+      temp_p2_org.SetXYZM(p2[1]->X(),p2[1]->Y(),p2[1]->Z(),mass_d2);
+
+      TLorentzVector temp_p1bis(temp_p1);
+      TLorentzVector temp_p2bis(temp_p2);
+
+      double factor_1 = rand->Gaus(1,3.e-2 );//0.02);
+      double factor2_1 = rand->Gaus(1,5.e-2);//0.017);
+      temp_p1_1.SetXYZM(p[0]->X()*factor_1,p[0]->Y()*factor_1,p[0]->Z()*factor_1,masses[0]);
+      temp_p2_1.SetXYZM(p2[1]->X()*factor2_1,p2[1]->Y()*factor2_1,p2[1]->Z()*factor2_1,mass_d2);
+      PP_1 = temp_p1_1+temp_p2_1;
+      
+      double factor_2 = rand->Gaus(1,3.e-2 );//0.02);
+      double factor2_2 = rand->Gaus(1,6.e-4);//0.017);
+      temp_p1_2.SetXYZM(p[0]->X()*factor_2,p[0]->Y()*factor_2,p[0]->Z()*factor_2,masses[0]);
+      temp_p2_2.SetXYZM(p2[1]->X()*factor2_2,p2[1]->Y()*factor2_2,p2[1]->Z()*factor2_2,mass_d2);
+      PP_2 = temp_p1_2+temp_p2_2;
+
+      double factor_3 = rand->Gaus(1,1.e-2 );//0.02);
+      double factor2_3 = rand->Gaus(1,6.e-4);//0.017);
+      temp_p1_3.SetXYZM(p[0]->X()*factor_3,p[0]->Y()*factor_3,p[0]->Z()*factor_3,masses[0]);
+      temp_p2_3.SetXYZM(p2[1]->X()*factor2_3,p2[1]->Y()*factor2_3,p2[1]->Z()*factor2_3,mass_d2);
+      PP_3 = temp_p1_3+temp_p2_3;
+
+      PP_org = temp_p1_org+temp_p2_org;
+      
+      TVector3 BoostVec = -PP.BoostVector();
+      TVector3 BoostVec_1 = -PP_1.BoostVector();
+      TVector3 BoostVec_2 = -PP_2.BoostVector();
+      TVector3 BoostVec_3 = -PP_3.BoostVector();
+      TVector3 BoostVecOrg = -PP_org.BoostVector();
+
+      temp_p1bis.Boost(BoostVec);
+      temp_p2bis.Boost(BoostVec);
+
+      temp_p1_1.Boost(BoostVec_1);
+      temp_p2_1.Boost(BoostVec_1);
+
+      temp_p1_2.Boost(BoostVec_2);
+      temp_p2_2.Boost(BoostVec_2);
+
+      temp_p1_3.Boost(BoostVec_3);
+      temp_p2_3.Boost(BoostVec_3);
+
+      temp_p1_org.Boost(BoostVecOrg);
+      temp_p2_org.Boost(BoostVecOrg);
+      
+      
       if(mom_pi.size()>=n_mix)
 	{
 	  for(unsigned int ii=0;ii<mom_pi.size();++ii)
@@ -243,10 +343,29 @@ void SimuPhaseSpace(int type,int TwoOrThree = 0, double rapidity_center=0.0)
       h_mom_fr->Fill((W.E()-W.M())/(double)(TMath::Nint(mass_mother)));//p[1]->Pz());
       h_phasespace->Fill(W.Rapidity(),W.Pt());
       h_InvMass->Fill(PP.M());
-      h_momFr_momPi->Fill(3.10715497*p2[1]->Pz()/charge_D2,p[0]->P());
-      h_BrhoFr_BrhoPi->Fill(3.10715497*p2[1]->Pz()/charge_D2,3.10715497*p[0]->P());
-      h_momFr_InvMass->Fill(3.10715497*p2[1]->P()/charge_D2,PP.M());
-      h_PzFr_InvMass->Fill(3.10715497*p2[1]->P()/charge_D2,PP.M());
+      h_momFr_momPi->Fill(3.30715497*p2[1]->Pz()/charge_D2,p[0]->P());
+      h_BrhoFr_BrhoPi->Fill(3.30715497*p2[1]->Pz()/charge_D2,3.30715497*p[0]->P());
+      h_momFr_InvMass->Fill(3.30715497*p2[1]->P()/charge_D2,PP.M());
+      h_PzFr_InvMass->Fill(3.30715497*p2[1]->P()/charge_D2,PP.M());
+      h_MomThetaFr->Fill(p2[1]->Theta()*TMath::RadToDeg(),p2[1]->P());
+      h_MomThetaPi->Fill(p[0]->Theta()*TMath::RadToDeg(),p[0]->P());
+      h_PolarPolar->Fill(p[0]->Theta()*TMath::RadToDeg(),p2[1]->Theta()*TMath::RadToDeg());
+      h_MomZThetaFr->Fill(p2[1]->Theta()*TMath::RadToDeg(),p2[1]->Pz());
+      h_MomZThetaPi->Fill(p[0]->Theta()*TMath::RadToDeg(),p[0]->Pz());
+      
+      h_momAtrest->Fill("d1_org",temp_p1_org.P(),1.);
+      h_momAtrest->Fill("d2_org",temp_p2_org.P(),1.);
+      h_momAtrest->Fill("d1_p1_0.01xp2_0.001",temp_p1bis.P(),1.);
+      h_momAtrest->Fill("d2_p1_0.01xp2_0.001",temp_p2bis.P(),1.);
+
+      h_momAtrest->Fill("d1_p1_0.03xp2_0.05",temp_p1_1.P(),1.);
+      h_momAtrest->Fill("d2_p1_0.03xp2_0.05",temp_p2_1.P(),1.);
+      
+      h_momAtrest->Fill("d1_p1_0.03xp2_0.0006",temp_p1_2.P(),1.);
+      h_momAtrest->Fill("d2_p1_0.03xp2_0.0006",temp_p2_2.P(),1.);
+
+      h_momAtrest->Fill("d1_p1_0.01xp2_0.0006",temp_p1_3.P(),1.);
+      h_momAtrest->Fill("d2_p1_0.01xp2_0.0006",temp_p2_3.P(),1.);
 
     }
 
@@ -383,8 +502,8 @@ void SimuPhaseSpace(int type,int TwoOrThree = 0, double rapidity_center=0.0)
   TCanvas* c4 = new TCanvas("c4","c4",500,500);
   c4->cd();
   TH1F* h_1 = (TH1F*)h_InvMass->Clone("h_Inv2");
-  h_1->RebinX(5);
-  h_1->Scale(0.025);
+  h_1->RebinX(10);
+  h_1->Scale(scaling);
   double mean_1 = h_1->GetMean();
   double rms_1 = h_1->GetRMS();
   h_1->GetXaxis()->SetRangeUser(mean_1-3.*rms_1,mean_1+3.*rms_1);
@@ -396,13 +515,15 @@ void SimuPhaseSpace(int type,int TwoOrThree = 0, double rapidity_center=0.0)
   TH1F* h_2 = (TH1F*)h_InvMassMix->Clone("h_Mix2");
   h_2->SetLineColor(kBlack);
   h_2->SetLineWidth(1);
-  h_2->RebinX(5);
+  h_2->RebinX(10);
   h_2->GetXaxis()->SetRangeUser(mean_1-3.*rms_1,mean_1+3.*rms_1);
   double integral2 = h_2->Integral();
   h_2->GetXaxis()->SetRangeUser(mean_1-300.*rms_1,mean_1+300.*rms_1);
   cout<<" S/B :"<<integral1/integral2;
-  h_all->Add(h_2);
-  h_all->Add(h_1);
+  h_1->SetLineWidth(3);
+  h_2->SetLineWidth(3);
+  h_all->Add(h_2,"hist");
+  h_all->Add(h_1,"hist");
   h_all->Draw("");
 
 
@@ -486,4 +607,30 @@ void SimuPhaseSpace(int type,int TwoOrThree = 0, double rapidity_center=0.0)
   mg->Add(a1_BrhoInvMax,"lp");
 
   mg->Draw("a");
+
+  TCanvas* c6 = new TCanvas("c6","c6",1000,500);
+  c6->Divide(2,1);
+  c6->cd(1);
+  h_MomThetaPi->Draw("colz");
+  c6->cd(2);
+  h_MomThetaFr->Draw("colz");
+
+  TCanvas* c7 = new TCanvas("c7","c7",500,500);
+  c7->cd();
+  h_momAtrest->Draw("colz");
+
+
+  TCanvas* c8 = new TCanvas("c8","c8",500,500);
+  c8->cd();
+  h_PolarPolar->Draw("colz");
+  
+  TCanvas* c9 = new TCanvas("c9","c9",1000,500);
+  c9->cd();
+  c9->Divide(2,1);
+  c9->cd(1);
+  h_MomThetaPi->Draw("colz");
+  c9->cd(2);
+  h_MomThetaFr->Draw("colz");
+  
+  
 }

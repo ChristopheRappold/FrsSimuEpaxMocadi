@@ -31,4 +31,16 @@
 *.asc
 *header_files*
 *.tar.xz
-
+old/
+*.zip
+mocadi/source3.5/
+*.tar.xz
+epax/IO-CaptureOutput-1.08/
+epax/epax_v31_www
+epax/usr/
+epax/octave-workspace
+*.ipynb_checkpoints/
+gicosy/
+gicosy-windows/
+DowloadGsi_UCLM/
+simulations_frs/kinematics2015
