@@ -54,17 +54,18 @@ die "TEMPLATEFILE not readable !" if(!-e $template_mocadi);
 die "HEADERFILE not readable !" if(!-e $ARGV[0]);
 die "MOCADI_EXE not executable !" if ($#ARGV == 2 and !-X $ARGV[2]);
 
+my $mocadi_exe = "./source3.5/mocadi-35";
+if($#ARGV == 2 or $#ARGV == 3)
+{
+    $mocadi_exe = $ARGV[2];
+}
+
 my $MeanEnergy =0;
 if($#ARGV == 3)
 {
     $MeanEnergy = $ARGV[3];
 }
 
-my $mocadi_exe = "./source3.5/mocadi-35";
-if($#ARGV == 2)
-{
-    $mocadi_exe = $ARGV[2];
-}
 
 (my $file_in = $ARGV[0]) =~ s/\.[^.]+$//;
 
@@ -82,11 +83,11 @@ my $Af =0;
 my $Zf =0;
 while(my $lineheader=<$fileheader2>)
 {
-    #print $lineheader;
+#    print $lineheader;
 
-    if($lineheader =~ /^\s*([0-9]*\.[0-9]*|[0-9]*)\,\s*([0-9]*)\,\s*Sollfragment/)
+    if($lineheader =~ /^\*?\s*([0-9]*\.[0-9]*|[0-9]*)\,\s*([0-9]*)\,\s*Sollfragment/)
     {	
-	#print $lineheader;
+#	print $lineheader;
 	$Af = $1;
 	$Zf = $2;
     }
@@ -161,6 +162,8 @@ foreach my $save (@array_save)
 	(my $file_out = $previous_out) =~ s/\.in/\.out/;
 	(my $file_out_hbk = $previous_out) =~ s/\.in/\.hbk/;
 	my $file_out_hbk2 = lc($file_out_hbk);
+	(my $file_out_root = $previous_out) =~ s/\.in/\.root/;
+	
 	
 	print "process outfile :".$file_out."\n";
 	if($MeanEnergy>0 && $previous_save =~ "#1")
@@ -203,7 +206,8 @@ foreach my $save (@array_save)
 	    #
 	    unlink $file_out;
 	    unlink $previous_out;
-	    #unlink $file_out_hbk2;
+	    unlink $file_out_hbk2;
+	    unlink $file_out_root;
 	    #
 	    
 	    for my $k1 ( sort keys %table_fragment ) 
@@ -217,6 +221,7 @@ foreach my $save (@array_save)
 	}
     }
 
+   # print "---- Debug:\n";
     # for my $k1 ( sort keys %table_fragment ) 
     # {
     # 	for my $k2 ( sort keys %{ $table_fragment{$k1} } ) 
@@ -225,13 +230,22 @@ foreach my $save (@array_save)
     # 	    print "step #".$k2." fragment ".$k1." = ".$temp_res."\n";
     # 	}
     # }
+    # print " ----\n ";
+
 
     print "previous save :".$previous_save."\n";
     my $to_cat = 0;
     my $Energy;
     my $headersave = substr $previous_save, 1;
-    $Energy = $table_fragment{ "1" }{  $headersave }; #"1" normally
-    print $Energy."\n" if(defined $Energy);
+    if(exists( $table_fragment{"1"} ) )
+    {
+	$Energy = $table_fragment{ "1" }{  $headersave }; #"1" normally
+    }
+    else
+    {
+	$Energy = $table_fragment{ "0" }{  $headersave };
+    }
+    print "set E:".$Energy."\n" if(defined $Energy);
     while(my $line2=<IN2>)
     {
 	$line2 =~ s/TempA/$Af/;
@@ -261,6 +275,7 @@ foreach my $save (@array_save)
     # If IO::CaptureOuput is installed or not
     if($noCapture == 0)
     {
+	print "Exe: $mocadi_exe,$file_in_mocadi\n";
 	$stdout = capture_exec($mocadi_exe,$file_in_mocadi);
     }
     else
