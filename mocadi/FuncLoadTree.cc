@@ -43,7 +43,7 @@ extern "C" int FuncLoadTree(double *in, double *out, double *dpar, char *option)
   
   int start_ev = (int)(dpar[0]);
   if(id_event%5000==1)
-    cout<<"current event#"<<id_event+start_ev<<endl;
+    std::cout<<"current event#"<<id_event+start_ev<<"\n";
 
   
   t->GetEntry(id_event+start_ev);
