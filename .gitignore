@@ -30,3 +30,5 @@
 *.hbk
 *.asc
 *header_files*
+*.tar.xz
+
